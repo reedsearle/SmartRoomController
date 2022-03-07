@@ -13,6 +13,10 @@
 #include <Adafruit_BME280.h>
 #include <splash.h>
 #include <Encoder.h>
+#include <Ethernet.h>
+#include <mac.h>
+#include <hue.h>
+
 
 // OLED screen constants
 const int SCREENWIDTH      = 128;  //  Width of screen in pixels
@@ -33,16 +37,24 @@ String    MENUHOME[][8][5] = {
                                  {"SMART OUTLETS ",      "* Address",      "* On / Off",           "* All Off",     ""        }
                                },
                                {
-                                 {0, 1, 7, 0, 0},
-                                 {0, 2, 6, 3, 5},
-                                 {1, 2, 2, 2, 2},
-                                 {1, 3, 4, 3, 3},
-                                 {3, 4, 4, 4, 4},
-                                 {1, 5, 5, 5, 5},
-                                 {1, 6, 6, 6, 6},
-                                 {0, 7, 7, 7, 7}
+                                 {0, 1, 7, 0, 0},  //  indicies for next menu level
+                                 {0, 2, 6, 3, 5},  //  indicies for next menu level
+                                 {1, 2, 2, 2, 2},  //  indicies for next menu level
+                                 {1, 3, 4, 3, 3},  //  indicies for next menu level
+                                 {3, 4, 4, 4, 4},  //  indicies for next menu level
+                                 {1, 9, 5, 5, 5},  //  indicies for next menu level
+                                 {1, 6, 6, 6, 6},  //  indicies for next menu level
+                                 {0, 7, 7, 7, 7}   //  indicies for next menu level
                                }
                              };
+                                // {0, 0,   0,  0,  0}  Case statement indicies for each menu level
+                                // {0, 0,   0,  0,  0}  Case statement indicies for each menu level
+                                // {0, 21, 22, 23,  0}  Case statement indicies for each menu level
+                                // {0, 31, 32,  0,  0}  Case statement indicies for each menu level
+                                // {0, 41, 42,  0,  0}  Case statement indicies for each menu level
+                                // {0, 51, 52, 53, 54}  Case statement indicies for each menu level
+                                // {0, 61, 62, 63,  0}  Case statement indicies for each menu level
+                                // {0, 71, 72, 73,  0}  Case statement indicies for each menu level
 
 // ENCODER Pins
 const int ENCAPIN     = 22;  // Encoder A pin
@@ -64,9 +76,15 @@ int  encMin;                      // Minimum position for encoder
 int  encMax;                     // Maximun position for encoder addressing
 int  menuMin;                      // Minimum position for menu
 int  menuMax;                     // Maximun position for menu
+int  indexMax;                     // Maximun position for menu
 int  menuPos;                     // Cursor location within a menu
 int  menuLevel;                     // Address of new menu
 bool firstTime;                   // indicates a new menu level has been requested
+bool fallEdge;
+
+int smartLightAdd;              // Address of the current smart light
+
+int caseIndex;
 
 int startTime;
 int endTime;
@@ -81,64 +99,111 @@ Encoder           encOne(ENCAPIN, ENCBPIN);
 //TEST CODE
 
 void setup() {
-  pinMode(BUTTONPIN, INPUT);
-  
+
+//Start Serial  
   Serial.begin(9600);
   while(!Serial);
   Serial.printf("Serial Port running\n");
-  
 
+// Start Ethernet
+//  Ethernet.begin(mac);
+//  printIP();
+//  Serial.printf("LinkStatus: %i  \n",Ethernet.linkStatus());
+
+// Start OLED Display
   if(!displayOne.begin(SSD1306_SWITCHCAPVCC, OLEDADDRESS)) {
     Serial.printf("OLED display did not initialize correctly.  Please reset.\n");
     while(1);  //  You shall not pass 
   }
   displayOne.setTextSize(1);  // Set text size
-
-
   Serial.printf("OLED display running\n");
-//  Serial.println(MENUCOLOR[0]);
-//  Serial.println(MENUCOLOR[1]);
 
-// ADD ETHERNET HERE
+  pinMode(BUTTONPIN, INPUT_PULLUP);
 
-  buttonPress   = 0;                      // Initial state is button NOT pressed
-  buttonPressed = 0;                      // Initial state is buttonhas NOT been pressed
-  encPos        = 0;                      // Set up encoder wheel
-  encPosOld     = 0;
-  encMin        = 0;                      // Minimum position for encoder
-  encMax        = 35;                     // Maximun position for encoder addressing
-  menuMin        = 0;                      // Minimum position for menu
-  menuMax        = 4;                     // Maximun position for menu
-  menuLevel        = 0;                     // Staerting menu is top level
-  firstTime = 0;
-  endTime = 0;
+  buttonPress    = 0;                     // Initial state is button NOT pressed
+  buttonPressed  = 0;                     // Initial state is buttonhas NOT been pressed
+//  encPos         = 0;                     // Set up encoder wheel
+//  encPosOld      = 0;
+//  encMin         = 0;                     // Minimum position for encoder
+//  encMax         = 35;                    // Maximun position for encoder addressing
+//  menuMin        = 0;                     // Minimum position for menu
+//  menuMax        = 4;                     // Maximun position for menu
+  indexMax        = 4;                     // Maximun position for menu
+  menuLevel      = 0;                     // Staerting menu is top level
+  caseIndex = 0;
+  firstTime      = 0;
+  fallEdge = 0;
+
+  smartLightAdd = 1;
+  
+  endTime        = 0;
 }
 
 void loop() {
-    menuPos = doEncoder(firstTime);      
 
-    buttonPress = digitalRead(BUTTONPIN);
-    if (!buttonPress && buttonPress != buttonPressed) {
-      menuLevel = MENUHOME[1][menuLevel][menuPos].toInt();
-      buttonPressed = buttonPress;
-      firstTime = 1;  // Reset menu cursor position in the new menu
-    } else if (buttonPress != buttonPressed) {
-      buttonPressed = buttonPress;
-    } 
-        
-    baseText(menuLevel, menuPos);
-    displayOne.display(); // Force display 
+  switch (caseIndex) {
+    case 51:  // Input indiviual Smart Light address
+      buttonPress = digitalRead(BUTTONPIN);
+Serial.printf("edge = %i\n",fallEdge);
+      if (buttonPress && buttonPress != buttonPressed) {
+//      if(fallEdge) {
+        while(buttonPress) { // Button is NOT pressed)
+          smartLightAdd = doEncoder(0,95,95);    //  Hard code of max values for default case  
+Serial.printf("address = %i\n",smartLightAdd);
+          displayOne.clearDisplay();//  Clear the display before going further
+          baseText(5, 1);
+          displayOne.setCursor(70,MENUPOSITIONS[1]);
+          displayOne.printf("%i",smartLightAdd);
+          displayOne.display(); // Force display 
+          buttonPress = digitalRead(BUTTONPIN);
+          caseIndex = 0;
+        }
+      }
+    break;
 
-    if (menuPos == 0) {
-      firstTime = 0;
-    }
+    
+    case 54:  // Toggle Smart light at individual address
+//      setHue(smartLightAdd,false,0,0,0);
+      delay(5000);
+//      setHue(smartLightAdd,true,255,255,255);
+
+      caseIndex = 0;
+      break;
+
+    
+    default:
+      menuPos = doEncoder(firstTime,35,4);    //  Hard code of max values for default case  
+
+      buttonPress = digitalRead(BUTTONPIN);
+      if (!buttonPress && buttonPress != buttonPressed) {
+        caseIndex = ((menuLevel) * 10) + menuPos;  // setting case statement index;
+        if (MENUHOME[1][menuLevel][menuPos].toInt() < 9) { // "9" is used to indicate that work needs to be done, not menu function
+          menuLevel = MENUHOME[1][menuLevel][menuPos].toInt();
+        }
+        buttonPressed = buttonPress;
+        firstTime = 1;  // Reset menu cursor position in the new menu
+        fallEdge = 0;   // Button has been pressed
+      } else if (buttonPress && buttonPress != buttonPressed) {
+        buttonPressed = buttonPress;
+        fallEdge = 1;  // Button has returned to idle state
+      } 
+
+      displayOne.clearDisplay();//  Clear the display before going further
+      baseText(menuLevel, menuPos);
+      displayOne.display(); // Force display 
+
+      if (menuPos == 0) {
+        firstTime = 0;
+      }
+      break;
+    
+  }
 }
 
 void baseText(int menuLvl, int menuCursor){  // Set up the recurring text and graphics
-  displayOne.clearDisplay();//  Clear the display before going further
-  displayOne.drawRect(0,0,SCREENWIDTH,SCREENHEIGHT,SSD1306_INVERSE);
+  displayOne.drawRect(2,2,SCREENWIDTH-2,SCREENHEIGHT-2,MENUCOLOR[1]);
 
-  for (i=0; i<= menuMax; i++) { // cycle through all possible menu positions
+  for (i=0; i<= indexMax; i++) { // cycle through all possible menu positions
     if (i == menuCursor) {
       displayOne.setTextColor(MENUCOLOR[0],MENUCOLOR[1]);
     } else {
@@ -149,12 +214,13 @@ void baseText(int menuLvl, int menuCursor){  // Set up the recurring text and gr
   }
 }
 
-int doEncoder (bool newLevel) {  //  check for encoder rotary movement
+int doEncoder (bool newLevel, int encMax, int menuMax) {  //  check for encoder rotary movement
+  int encPos;
   int menuPosition;
     encPos = encOne.read();
-  if (encPos < encMin) {                    // check if encoder has gone below minimum value
-    encPos = encMin;                        // Set position to minimum value
-    encOne.write(encMin);                   // force encoder to minimum value
+  if (encPos < 0) {                    // check if encoder has gone below minimum value
+    encPos = 0;                        // Set position to minimum value
+    encOne.write(0);                   // force encoder to minimum value
   }
   else if (encPos >= encMax) {
     encPos = encMax;                         // Set position to minimum value
@@ -163,8 +229,8 @@ int doEncoder (bool newLevel) {  //  check for encoder rotary movement
 
     menuPosition = map (encPos,encMin,encMax,menuMin,menuMax); //  increase the encoder position width to reduce bounce
 
-  if (menuPosition < menuMin) {                    // check if encoder has gone below minimum value
-    menuPosition = menuMin;                        // Set position to minimum value
+  if (menuPosition < 0) {                    // check if encoder has gone below minimum value
+    menuPosition = 0;                        // Set position to minimum value
   }
   else if (menuPosition >= menuMax) {
     menuPosition = menuMax;                         // Set position to minimum value
@@ -172,10 +238,18 @@ int doEncoder (bool newLevel) {  //  check for encoder rotary movement
 
   if (newLevel) {
     menuPosition = 0; 
-    encOne.write(encMin);                   // force encoder to minimum value
+    encOne.write(0);                   // force encoder to minimum value
   }
   
   return menuPosition;
+}
+
+void printIP() {
+  Serial.printf("My IP address: ");
+  for (byte thisByte = 0; thisByte < 3; thisByte++) {
+    Serial.printf("%i.",Ethernet.localIP()[thisByte]);
+  }
+  Serial.printf("%i\n",Ethernet.localIP()[3]);
 }
 
 
@@ -195,3 +269,6 @@ int doEncoder (bool newLevel) {  //  check for encoder rotary movement
 //    encPosOld = encPos;                        // Set value of old to current for comparison
 //    return menuPosition;
 //  }
+
+//      Serial.printf("Menu Level = %i menu Pos %i\n",menuLevel, menuPos);
+//      Serial.printf("Case index = %i \n",caseIndex);
