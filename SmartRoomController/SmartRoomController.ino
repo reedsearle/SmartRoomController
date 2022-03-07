@@ -19,8 +19,9 @@ const int SCREENWIDTH  = 128;  //  Width of screen in pixels
 const int SCREENHEIGHT = 64;   //  Height of screen in pixels
 const int OLEDRESET    = -1;   //  OLED Reset shared with Teensy
 byte      OLEDADDRESS  = 0x3C; //  Address of the OLED on the IIC bus
-const int MENUPOSITIONS[] = {15, 25, 35, 45};  // Starting positions for all menu options
+const int MENUPOSITIONS[] = {5, 15, 25, 35, 45};  // Starting positions for all menu options
 const int MENUCOLOR[]     = {0,1,2}; // Set three colors to print, in order: BLACK, WHITE, INVERSE
+String    MENUHOME[]      = {"SMART SCANNER", "* Smart Lights", "* Smart Outlets", "* IP Address", "* 4th option"};
 
 // ENCODER Pins
 const int ENCAPIN     = 22;  // Encoder A pin
@@ -41,10 +42,13 @@ int  encMin;                      // Minimum position for encoder
 int  encMax;                     // Maximun position for encoder addressing
 int  menuMin;                      // Minimum position for menu
 int  menuMax;                     // Maximun position for menu
+int  menuPos;
 
 int startTime;
 int endTime;
 int delayTime;
+
+int i;
 
 // Constructors
 Adafruit_SSD1306  displayOne(SCREENWIDTH, SCREENHEIGHT, &Wire, OLEDRESET);
@@ -76,40 +80,39 @@ void setup() {
   encMin        = 0;                      // Minimum position for encoder
   encMax        = 35;                     // Maximun position for encoder addressing
   menuMin        = 0;                      // Minimum position for menu
-  menuMax        = 3;                     // Maximun position for menu
+  menuMax        = 4;                     // Maximun position for menu
   endTime = 0;
 }
 
 void loop() {
-  startTime = millis();
-  delayTime = startTime - endTime;
-  if (delayTime > DELAYTIME) { // Delaying to avoid overrunning the display MIGHT REMOVE IN FUTURE
+//  startTime = millis();
+//  delayTime = startTime - endTime;
+//  if (delayTime > DELAYTIME) { // Delaying to avoid overrunning the display MIGHT REMOVE IN FUTURE
 
-    baseText();
-    doEncoder();
+    menuPos = doEncoder();
+    baseText(menuPos);
     displayOne.display(); // Force display
 
-    endTime = millis();
-  }
+//    endTime = millis();
+//  }
   
   
 }
 
-void baseText(){  // Set up the recurring text and graphics
+void baseText(int menuCursor){  // Set up the recurring text and graphics
   displayOne.clearDisplay();//  Clear the display before going further
   displayOne.drawRect(0,0,SCREENWIDTH,SCREENHEIGHT,SSD1306_INVERSE);
   displayOne.setTextSize(1);
-  displayOne.setTextColor(MENUCOLOR[0],MENUCOLOR[1]);
-  displayOne.setCursor(7,5);
-  displayOne.println("SMART SCANNER");
-  displayOne.setCursor(7,15);
-  displayOne.println("* Smart Lights");
-  displayOne.setCursor(7,25);
-  displayOne.println("* Smart Outlets");
-  displayOne.setCursor(7,35);
-  displayOne.println("* IP Address");
-  displayOne.setCursor(7,45);
-  displayOne.println("* 4th option");
+
+  for (i=0; i<= menuMax; i++) { // cycle through all possible menu positions
+    if (i == menuCursor) {
+      displayOne.setTextColor(MENUCOLOR[0],MENUCOLOR[1]);
+    } else {
+      displayOne.setTextColor(MENUCOLOR[1]);
+    }
+    displayOne.setCursor(7,MENUPOSITIONS[i]);
+    displayOne.println(MENUHOME[i]);
+  }
 }
 
 int doEncoder () {  //  check for encoder rotary movement
