@@ -15,17 +15,39 @@
 #include <Encoder.h>
 
 // OLED screen constants
-const int SCREENWIDTH  = 128;  //  Width of screen in pixels
-const int SCREENHEIGHT = 64;   //  Height of screen in pixels
-const int OLEDRESET    = -1;   //  OLED Reset shared with Teensy
-byte      OLEDADDRESS  = 0x3C; //  Address of the OLED on the IIC bus
-const int MENUPOSITIONS[] = {5, 15, 25, 35, 45};  // Starting positions for all menu options
-const int MENUCOLOR[]     = {0,1,2}; // Set three colors to print, in order: BLACK, WHITE, INVERSE
-String    MENUHOME[]      = {"SMART SCANNER", "* Smart Lights", "* Smart Outlets", "* IP Address", "* 4th option"};
+const int SCREENWIDTH      = 128;  //  Width of screen in pixels
+const int SCREENHEIGHT     = 64;   //  Height of screen in pixels
+const int OLEDRESET        = -1;   //  OLED Reset shared with Teensy
+byte      OLEDADDRESS      = 0x3C; //  Address of the OLED on the IIC bus
+const int MENUPOSITIONS[]  = {5, 15, 25, 35, 45};  // Starting positions for all menu options
+const int MENUCOLOR[]      = {0,1,2}; // Set three colors to print, in order: BLACK, WHITE, INVERSE
+String    MENUHOME[][8][5] = {
+                               {
+                                 {"SMART SCANNER",       "* Smart Lights", "* Smart Outlets",      "* IP Address",  ""        },
+                                 {"SMART LIGHTS ",       "* Address",      "* Delay",              "* Fire",        "* Manual"},
+                                 {"SMART LIGHTS ADDR",   "String n (x-Y)", "* Previous String",    "* Next String", ""        },
+                                 {"SMART LIGHTS FIRE1",  "Current String", "* Create New String",  "",              ""        },
+                                 {"SMART LIGHTS FIRE2",  "* Total Lights", "* Addresses in order", "",              ""        },
+                                 {"SMART LIGHTS MANUAL", "* Address",      "* Hue",                "* Brightness",  "On / Off"},
+                                 {"SMART LIGHTS DELAY",  "* Address",      "* Initialize",         "* Run",         ""        },
+                                 {"SMART OUTLETS ",      "* Address",      "* On / Off",           "* All Off",     ""        }
+                               },
+                               {
+                                 {0, 1, 7, 0, 0},
+                                 {0, 2, 6, 3, 5},
+                                 {1, 2, 2, 2, 2},
+                                 {1, 3, 4, 3, 3},
+                                 {3, 4, 4, 4, 4},
+                                 {1, 5, 5, 5, 5},
+                                 {1, 6, 6, 6, 6},
+                                 {0, 7, 7, 7, 7}
+                               }
+                             };
 
 // ENCODER Pins
 const int ENCAPIN     = 22;  // Encoder A pin
 const int ENCBPIN     = 21;  // Encoder B pin
+const int BUTTONPIN   = 23;  // Encoder button
 
 const int MONTH        = 9;
 const int DAY          = 10;
@@ -42,7 +64,9 @@ int  encMin;                      // Minimum position for encoder
 int  encMax;                     // Maximun position for encoder addressing
 int  menuMin;                      // Minimum position for menu
 int  menuMax;                     // Maximun position for menu
-int  menuPos;
+int  menuPos;                     // Cursor location within a menu
+int  menuLevel;                     // Address of new menu
+bool firstTime;                   // indicates a new menu level has been requested
 
 int startTime;
 int endTime;
@@ -57,6 +81,8 @@ Encoder           encOne(ENCAPIN, ENCBPIN);
 //TEST CODE
 
 void setup() {
+  pinMode(BUTTONPIN, INPUT);
+  
   Serial.begin(9600);
   while(!Serial);
   Serial.printf("Serial Port running\n");
@@ -66,6 +92,8 @@ void setup() {
     Serial.printf("OLED display did not initialize correctly.  Please reset.\n");
     while(1);  //  You shall not pass 
   }
+  displayOne.setTextSize(1);  // Set text size
+
 
   Serial.printf("OLED display running\n");
 //  Serial.println(MENUCOLOR[0]);
@@ -81,28 +109,34 @@ void setup() {
   encMax        = 35;                     // Maximun position for encoder addressing
   menuMin        = 0;                      // Minimum position for menu
   menuMax        = 4;                     // Maximun position for menu
+  menuLevel        = 0;                     // Staerting menu is top level
+  firstTime = 0;
   endTime = 0;
 }
 
 void loop() {
-//  startTime = millis();
-//  delayTime = startTime - endTime;
-//  if (delayTime > DELAYTIME) { // Delaying to avoid overrunning the display MIGHT REMOVE IN FUTURE
+    menuPos = doEncoder(firstTime);      
 
-    menuPos = doEncoder();
-    baseText(menuPos);
-    displayOne.display(); // Force display
+    buttonPress = digitalRead(BUTTONPIN);
+    if (!buttonPress && buttonPress != buttonPressed) {
+      menuLevel = MENUHOME[1][menuLevel][menuPos].toInt();
+      buttonPressed = buttonPress;
+      firstTime = 1;  // Reset menu cursor position in the new menu
+    } else if (buttonPress != buttonPressed) {
+      buttonPressed = buttonPress;
+    } 
+        
+    baseText(menuLevel, menuPos);
+    displayOne.display(); // Force display 
 
-//    endTime = millis();
-//  }
-  
-  
+    if (menuPos == 0) {
+      firstTime = 0;
+    }
 }
 
-void baseText(int menuCursor){  // Set up the recurring text and graphics
+void baseText(int menuLvl, int menuCursor){  // Set up the recurring text and graphics
   displayOne.clearDisplay();//  Clear the display before going further
   displayOne.drawRect(0,0,SCREENWIDTH,SCREENHEIGHT,SSD1306_INVERSE);
-  displayOne.setTextSize(1);
 
   for (i=0; i<= menuMax; i++) { // cycle through all possible menu positions
     if (i == menuCursor) {
@@ -111,11 +145,11 @@ void baseText(int menuCursor){  // Set up the recurring text and graphics
       displayOne.setTextColor(MENUCOLOR[1]);
     }
     displayOne.setCursor(7,MENUPOSITIONS[i]);
-    displayOne.println(MENUHOME[i]);
+    displayOne.println(MENUHOME[0][menuLvl][i]);
   }
 }
 
-int doEncoder () {  //  check for encoder rotary movement
+int doEncoder (bool newLevel) {  //  check for encoder rotary movement
   int menuPosition;
     encPos = encOne.read();
   if (encPos < encMin) {                    // check if encoder has gone below minimum value
@@ -128,7 +162,6 @@ int doEncoder () {  //  check for encoder rotary movement
   }
 
     menuPosition = map (encPos,encMin,encMax,menuMin,menuMax); //  increase the encoder position width to reduce bounce
-//    menuPosition = map (encPos,0,95,0,4); //  increase the encoder position width to reduce bounce
 
   if (menuPosition < menuMin) {                    // check if encoder has gone below minimum value
     menuPosition = menuMin;                        // Set position to minimum value
@@ -136,7 +169,24 @@ int doEncoder () {  //  check for encoder rotary movement
   else if (menuPosition >= menuMax) {
     menuPosition = menuMax;                         // Set position to minimum value
   }
-    return menuPosition;
+
+  if (newLevel) {
+    menuPosition = 0; 
+    encOne.write(encMin);                   // force encoder to minimum value
+  }
+  
+  return menuPosition;
+}
+
+
+
+// TESTCODE
+
+//  startTime = millis();
+//  delayTime = startTime - endTime;
+//  if (delayTime > DELAYTIME) { // Delaying to avoid overrunning the display MIGHT REMOVE IN FUTURE
+//    endTime = millis();
+//  }
 
 //  TRYING TO AVOID REFRESHING SCREEN ALOT
 //  if (encPosOld == encPos) {  //  check if encoder has moved, if not, let calling function know
@@ -145,5 +195,3 @@ int doEncoder () {  //  check for encoder rotary movement
 //    encPosOld = encPos;                        // Set value of old to current for comparison
 //    return menuPosition;
 //  }
-
-}
