@@ -16,6 +16,7 @@
 #include <Ethernet.h>
 #include <mac.h>
 #include <hue.h>
+#include <wemo.h>
 
 
 // OLED screen constants
@@ -65,6 +66,7 @@ const int MONTH        = 9;
 const int DAY          = 10;
 const int YEAR         = 1966;
 const int DELAYTIME = 250;
+
 int status;
 
   // Encoder Variables
@@ -80,10 +82,13 @@ int  indexMax;                     // Maximun position for menu
 int  menuPos;                     // Cursor location within a menu
 int  menuLevel;                     // Address of new menu
 bool firstTime;                   // indicates a new menu level has been requested
-bool fallEdge;
+//bool fallEdge;
 
 int smartLightAdd;              // Address of the current smart light
 int smartLightHue;              // Hue of the current smart light
+
+int smartOutletAdd;              // Address of the current smart light
+int maxOutlets;                    // Maximum number of smart outlets on network
 
 int caseIndex;
 
@@ -98,6 +103,7 @@ Adafruit_SSD1306  displayOne(SCREENWIDTH, SCREENHEIGHT, &Wire, OLEDRESET);
 Encoder           encOne(ENCAPIN, ENCBPIN);
 
 //TEST CODE
+int wemoDevice = 3;  // fan on my desk
 
 void setup() {
 
@@ -133,9 +139,10 @@ void setup() {
   menuLevel      = 0;                     // Staerting menu is top level
   caseIndex = 0;
   firstTime      = 0;
-  fallEdge = 0;
 
-  smartLightAdd = 1;
+  smartLightAdd  = 1;
+  smartOutletAdd = 0;
+  maxOutlets = 10;  // Arbitrarily set to 10
   
   endTime        = 0;
 }
@@ -143,8 +150,12 @@ void setup() {
 void loop() {
 
   switch (caseIndex) {
+    case 3:
+     caseIndex = 70;  // Redirect
+     break;
+     
     case 14:
-     caseIndex = 50;
+     caseIndex = 50;  //  Redirect
      break;
      
     case 50:
@@ -218,6 +229,64 @@ void loop() {
     Serial.println("case 54");
 
       caseIndex = 50;
+      break;
+
+    
+    case 70:
+      buttonPress = digitalRead(BUTTONPIN);
+      if (buttonPress && buttonPress != buttonPressed) {
+        while(buttonPress) { // Button is NOT pressed)
+          menuPos = doEncoder(firstTime,35,4);    //  Hard code of max values for default case  
+          encoderButton();
+          displayOne.clearDisplay();//  Clear the display before going further
+          baseText(7, menuPos);
+          displayOne.setCursor(70,MENUPOSITIONS[1]);
+          displayOne.printf("%i",smartOutletAdd);
+          displayOne.display(); // Force display 
+          if (menuPos == 0) {
+            firstTime = 0;
+          }
+        }
+      }
+      break;
+    
+    case 71:  // Input indiviual Smart outlet address
+      buttonPress = digitalRead(BUTTONPIN);
+      if (buttonPress && buttonPress != buttonPressed) {
+        while(buttonPress) { // Button is NOT pressed)
+          smartOutletAdd = doEncoder(0,95,95);    //  Hard code of max values for default case  
+          displayOne.clearDisplay();//  Clear the display before going further
+          baseText(7, 1);
+          displayOne.setCursor(70,MENUPOSITIONS[1]);
+          displayOne.printf("%i",smartOutletAdd);
+          displayOne.display(); // Force display 
+          buttonPress = digitalRead(BUTTONPIN);
+          Serial.printf("(50)Case Index = %i \n",caseIndex);
+          caseIndex = 70;
+        }
+      }
+    break;
+
+    case 72:  // Turn ON Smart outlet at individual address
+      switchON(smartOutletAdd);
+//    Serial.println("case 73");
+      caseIndex = 70;
+      break;
+
+    
+    case 73:  // Turn OFF Smart outlet at individual address
+      switchOFF(smartOutletAdd);
+//    Serial.println("case 73");
+      caseIndex = 70;
+      break;
+
+    
+    case 74:  // Turn OFF ALL Smart outlets
+      for (i=0; i<=maxOutlets; i++) {
+      switchOFF(i);
+      }
+//    Serial.println("case 74");
+      caseIndex = 70;
       break;
 
     
