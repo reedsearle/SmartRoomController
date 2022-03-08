@@ -28,14 +28,14 @@ const int MENUPOSITIONS[]  = {5, 15, 25, 35, 45};  // Starting positions for all
 const int MENUCOLOR[]      = {0,1,2}; // Set three colors to print, in order: BLACK, WHITE, INVERSE
 String    MENUHOME[][8][5] = {
                                {
-                                 {"SMART SCANNER",       "* Smart Lights", "* Smart Outlets",      "* IP Address",  ""          },
-                                 {"SMART LIGHTS ",       "* Address",      "* Delay",              "* Fire",        "* Manual"  },
-                                 {"SMART LIGHTS ADDR",   "String n (x-Y)", "* Previous String",    "* Next String", ""          },
-                                 {"SMART LIGHTS FIRE1",  "Current String", "* Create New String",  "",              ""          },
-                                 {"SMART LIGHTS FIRE2",  "* Total Lights", "* Addresses in order", "",              ""          },
-                                 {"SMART LIGHTS MANUAL", "* Address",      "* Hue",                "* Turn ON",     "* Turn OFF"},
-                                 {"SMART LIGHTS DELAY",  "* Address",      "* Initialize",         "* Run Delay",   ""          },
-                                 {"SMART OUTLETS ",      "* Address",      "* Turn ON",            "* Turn OFF",    "* All Off" }
+                                 {"SMART SCANNER",       "* Smart Lights", "* Smart Outlets",      "* IP Address",  ""           },
+                                 {"SMART LIGHTS ",       "* Address",      "* Delay",              "* Fire",        "* Manual"   },
+                                 {"SMART LIGHTS ADDR",   "",               "* Previous String",    "* Next String", "FLASH"      },
+                                 {"SMART LIGHTS FIRE",   "FIRE String",    "* Create New String",  "* Test",        ""           },
+                                 {"SMART LIGHTS FIRE2",  "* Total Lights", "* Addresses in order", "",              ""           },
+                                 {"SMART LIGHTS MANUAL", "* Address",      "* Hue",                "* Turn ON",     "* Turn OFF" },
+                                 {"SMART LIGHTS DELAY",  "* Address",      "* Initialize",         "* Run Delay",   ""           },
+                                 {"SMART OUTLETS ",      "* Address",      "* Turn ON",            "* Turn OFF",    "* All Off"  }
                                },
                                {
                                  {0, 1, 7, 0, 0},  //  indicies for next menu level
@@ -48,6 +48,9 @@ String    MENUHOME[][8][5] = {
                                  {0, 7, 7, 7, 7}   //  indicies for next menu level
                                }
                              };
+//                                 {"SMART LIGHTS ADDR",   "String n (x-Y)", "* Previous String",    "* Next String", "FLASH"     },
+//                                 {"SMART LIGHTS FIRE1",  "Current String", "* Create New String",  "",              ""          },
+//                                 {"SMART LIGHTS FIRE2",  "* Total Lights", "* Addresses in order", "",              ""          },
                                 // {0, 0,   0,  0,  0}  Case statement indicies for each menu level
                                 // {0, 0,   0,  0,  0}  Case statement indicies for each menu level
                                 // {0, 21, 22, 23,  0}  Case statement indicies for each menu level
@@ -89,6 +92,9 @@ int lightIn;
 
 int smartLightAdd;              // Address of the current smart light
 int smartLightHue;              // Hue of the current smart light
+int lightBatch;
+int startBatch;
+int fireBatch[3];
 
 int smartOutletAdd;              // Address of the current smart light
 int maxOutlets;                    // Maximum number of smart outlets on network
@@ -106,7 +112,7 @@ int delayStart;
 int delayStop;
 int deltaDelay;
 
-int i;
+int i,j;
 
 // Constructors
 Adafruit_SSD1306  displayOne(SCREENWIDTH, SCREENHEIGHT, &Wire, OLEDRESET);
@@ -120,13 +126,13 @@ void setup() {
 
 //Start Serial  
   Serial.begin(9600);
-  while(!Serial);
+//  while(!Serial);
   Serial.printf("Serial Port running\n");
 
 // Start Ethernet
-//  Ethernet.begin(mac);
-//  printIP();
-//  Serial.printf("LinkStatus: %i  \n",Ethernet.linkStatus());
+  Ethernet.begin(mac);
+  printIP();
+  Serial.printf("LinkStatus: %i  \n",Ethernet.linkStatus());
 
 // Start OLED Display
   if(!displayOne.begin(SSD1306_SWITCHCAPVCC, OLEDADDRESS)) {
@@ -154,6 +160,11 @@ void setup() {
 
   smartLightAdd  = 1;
   smartOutletAdd = 0;
+  lightBatch = 1;
+  fireBatch[0] = {1};
+  fireBatch[1] = {2};
+  fireBatch[2] = {3};
+  
   maxOutlets = 10;  // Arbitrarily set to 10
   
   endTime        = 0;
@@ -211,8 +222,11 @@ void loop() {
         while(buttonPress) { // Button is NOT pressed)
           menuPos = doEncoder(firstTime,35,4);    //  Hard code of max values for default case  
           encoderButton();
+          startBatch = 3*(lightBatch-1)+1;
           displayOne.clearDisplay();//  Clear the display before going further
           baseText(menuLevel, menuPos);
+          displayOne.setCursor(7,MENUPOSITIONS[1]);
+          displayOne.printf("String %i (%i-%i)",lightBatch, startBatch, startBatch+2);
           displayOne.display(); // Force display 
           if (menuPos == 0) {
             firstTime = 0;
@@ -226,18 +240,37 @@ void loop() {
      break;
      
     case 22:          //  Redirect up one level.  This case does nothing
-     caseIndex = 11;  //  Redirect
-     break;
+      if (lightBatch > 1) {
+        lightBatch--;
+      } else {
+        lightBatch = 1;
+      }
+      caseIndex = 11;  //  Redirect
+      break;
      
     case 23:          //  Redirect up one level.  This case does nothing
-     caseIndex = 11;  //  Redirect
-     break;
+      lightBatch++;
+      caseIndex = 11;  //  Redirect
+      break;
      
     case 24:          //  Redirect up one level.  This case does nothing
+      for(i=0; i<=5; i++) {  //flash for 10 times
+        for (j=0; j<=2; j++) { // flash the string
+          setHue(startBatch +j,true,HueRed,255,255);
+        }
+        delay(500);
+          setHue(startBatch ,   true,HueYellow,255,255);
+          setHue(startBatch +1, true,HueGreen,255,255);
+          setHue(startBatch +2, true,HueBlue,255,255);
+        delay(500);
+      }
+        for (j=0; j<=2; j++) { // flash the string
+          setHue(startBatch +j,false,HueRed,255,255);
+        }
      caseIndex = 11;  //  Redirect
      break;
      
-//  SMART LIGHTS FIRE - VIEW STRINGS
+//  SMART LIGHTS FIRE - VIEW, EDIT, AND TEST STRINGS
     case 30:          //  Redirect up one level. 
      caseIndex = 1;  //  Redirect
      break;
@@ -251,6 +284,8 @@ void loop() {
           encoderButton();
           displayOne.clearDisplay();//  Clear the display before going further
           baseText(menuLevel, menuPos);
+          displayOne.setCursor(80,MENUPOSITIONS[1]);
+          displayOne.printf("%i-%i-%i",fireBatch[0], fireBatch[1], fireBatch[2]);
           displayOne.display(); // Force display 
           if (menuPos == 0) {
             firstTime = 0;
@@ -263,11 +298,40 @@ void loop() {
      caseIndex = 13;  //  Redirect
      break;
      
-//    case 32:          //  Redirect up one level.  This case is covered below
-//     caseIndex = 11;  //  Redirect
-//     break;
+    case 32:          //  Redirect up one level.  This case is covered below
+      j = 0;
+      while (j<=2) {  //  go through all three addresses
+      buttonPress = digitalRead(BUTTONPIN);
+      if (buttonPress && buttonPress != buttonPressed) {
+          while(buttonPress) { // Button is NOT pressed)
+            fireBatch[j] = doEncoder(0,95,95);    //  Hard code of max values for default case  
+            displayOne.clearDisplay();//  Clear the display before going further
+            baseText(menuLevel, 5);
+            displayOne.setCursor(80,MENUPOSITIONS[1]);
+            displayOne.printf("%i-%i-%i",fireBatch[0], fireBatch[1], fireBatch[2]);
+            displayOne.display(); // Force display 
+            buttonPress = digitalRead(BUTTONPIN);
+            Serial.printf("(50)Case Index = %i \n",caseIndex);
+            caseIndex = 13;
+          }
+        Serial.printf("i %i firebatch %i\n",j, fireBatch[j]);
+          j++;
+        }
+      }
+     break;
      
     case 33:          //  Redirect up one level.  This case does nothing
+      for(i=0; i<=1; i++) {  //flash for 10 times
+        for (j=0; j<=2; j++) { // flash the string
+          setHue(fireBatch[j],true,HueRed,255,255);
+          delay(500);
+        }
+        for (j=0; j<=2; j++) { // flash the string
+          setHue(fireBatch[j],false,HueRed,255,255);
+          delay(500);
+        }
+        delay(1000);
+      }
      caseIndex = 13;  //  Redirect
      break;
      
@@ -275,43 +339,43 @@ void loop() {
      caseIndex = 13;  //  Redirect
      break;
      
-//  SMART LIGHTS FIRE - SET UP STRINGS
-    case 40:          //  Redirect up one level. 
-     caseIndex = 13;  //  Redirect
-     break;
-     
-    case 32:
-      buttonPress = digitalRead(BUTTONPIN);
-      menuLevel = 4;
-      if (buttonPress && buttonPress != buttonPressed) {
-        while(buttonPress) { // Button is NOT pressed)
-          menuPos = doEncoder(firstTime,35,4);    //  Hard code of max values for default case  
-          encoderButton();
-          displayOne.clearDisplay();//  Clear the display before going further
-          baseText(menuLevel, menuPos);
-          displayOne.display(); // Force display 
-          if (menuPos == 0) {
-            firstTime = 0;
-          }
-        }
-      }
-      break;
-
-    case 41:          //  Redirect up one level.  This case does nothing
-     caseIndex = 32;  //  Redirect
-     break;
-     
-    case 42:          //  Redirect up one level.  This case does nothing
-     caseIndex = 32;  //  Redirect
-     break;
-     
-    case 43:          //  Redirect up one level.  This case does nothing
-     caseIndex = 32;  //  Redirect
-     break;
-     
-    case 44:          //  Redirect up one level.  This case does nothing
-     caseIndex = 32;  //  Redirect
-     break;
+//  SMART LIGHTS FIRE - SET UP STRINGS ?? NOT USED ANYMORE ??
+//    case 40:          //  Redirect up one level. 
+//     caseIndex = 13;  //  Redirect
+//     break;
+//     
+//    case 32:
+//      buttonPress = digitalRead(BUTTONPIN);
+//      menuLevel = 4;
+//      if (buttonPress && buttonPress != buttonPressed) {
+//        while(buttonPress) { // Button is NOT pressed)
+//          menuPos = doEncoder(firstTime,35,4);    //  Hard code of max values for default case  
+//          encoderButton();
+//          displayOne.clearDisplay();//  Clear the display before going further
+//          baseText(menuLevel, menuPos);
+//          displayOne.display(); // Force display 
+//          if (menuPos == 0) {
+//            firstTime = 0;
+//          }
+//        }
+//      }
+//      break;
+//
+//    case 41:          //  Redirect up one level.  This case does nothing
+//     caseIndex = 32;  //  Redirect
+//     break;
+//     
+//    case 42:          //  Redirect up one level.  This case does nothing
+//     caseIndex = 32;  //  Redirect
+//     break;
+//     
+//    case 43:          //  Redirect up one level.  This case does nothing
+//     caseIndex = 32;  //  Redirect
+//     break;
+//     
+//    case 44:          //  Redirect up one level.  This case does nothing
+//     caseIndex = 32;  //  Redirect
+//     break;
      
 //  SMART LIGHT MANUAL CONTROL
     case 50:          //  Redirect up one level
@@ -381,15 +445,14 @@ void loop() {
 //  SMART LIGHT MANUAL CONTROL - TURN ON
     case 53:  // Turn ON Smart light at individual address
       setHue(smartLightAdd,true,smartLightHue,255,255);
-          caseIndex = 14;
+      caseIndex = 14;
       break;
 
     
 //  SMART LIGHT MANUAL CONTROL - TURN OFF
     case 54:  // Turn OFF Smart light at individual address
       setHue(smartLightAdd,false,0,0,0);
-Serial.printf(" case index %i, address %i \n", caseIndex,smartLightAdd);
-          caseIndex = 14;
+      caseIndex = 14;
       break;
 
 
