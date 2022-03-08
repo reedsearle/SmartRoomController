@@ -17,7 +17,6 @@
 #include <mac.h>
 #include <hue.h>
 #include <wemo.h>
-#include <OneButton.h>
 
 
 // OLED screen constants
@@ -112,11 +111,11 @@ int i;
 // Constructors
 Adafruit_SSD1306  displayOne(SCREENWIDTH, SCREENHEIGHT, &Wire, OLEDRESET);
 Encoder           encOne(ENCAPIN, ENCBPIN);
-OneButton         encoderButton(BUTTONPIN, true,true);  // Instantiate buttonOne as type buttonOne
 
 //TEST CODE
 int wemoDevice = 3;  // fan on my desk
 
+// *******************  SETUP  *********************** //
 void setup() {
 
 //Start Serial  
@@ -125,9 +124,9 @@ void setup() {
   Serial.printf("Serial Port running\n");
 
 // Start Ethernet
-  Ethernet.begin(mac);
-  printIP();
-  Serial.printf("LinkStatus: %i  \n",Ethernet.linkStatus());
+//  Ethernet.begin(mac);
+//  printIP();
+//  Serial.printf("LinkStatus: %i  \n",Ethernet.linkStatus());
 
 // Start OLED Display
   if(!displayOne.begin(SSD1306_SWITCHCAPVCC, OLEDADDRESS)) {
@@ -137,10 +136,7 @@ void setup() {
   displayOne.setTextSize(1);  // Set text size
   Serial.printf("OLED display running\n");
 
-//  pinMode(BUTTONPIN, INPUT_PULLUP);
-//  One Button Setup
-  encoderButton.attachClick(click1);        // Set CLICK1 as function for single click
-  encoderButton.attachDoubleClick(click2);  // Set CLICK2 as function for double click
+  pinMode(BUTTONPIN, INPUT_PULLUP);
 
   buttonPress    = 0;                     // Initial state is button NOT pressed
   buttonPressed  = 0;                     // Initial state is buttonhas NOT been pressed
@@ -163,84 +159,222 @@ void setup() {
   endTime        = 0;
 }
 
+// *******************  LOOP  *********************** //
 void loop() {
 
   switch (caseIndex) {
     case 0:  // Home State
       menuPos = doEncoder(firstTime,35,4);    //  Hard code of max values for default case
       menuLevel = 0;  
-      encoderButton.tick();
-      caseIndex = caseState;
+      encoderButton();
   Serial.printf("(0)Case Index = %i \n",caseIndex);
       displayOne.clearDisplay();//  Clear the display before going further
       baseText(menuLevel, menuPos);
       displayOne.display(); // Force display 
-//      if (menuPos == 0) {
-//        firstTime = 0;
-//      }
+      if (menuPos == 0) {
+        firstTime = 0;
+      }
       break;
 
 
-//    case 60:
-//     caseIndex = 10;  //  Redirect
+//  SMART LIGHTS
+    case 10:          //  Redirect up one level. 
+     caseIndex = 0;  //  Redirect
+     break;
+     
+    case 1:
+      buttonPress = digitalRead(BUTTONPIN);
+      menuLevel = 1;
+      if (buttonPress && buttonPress != buttonPressed) {
+        while(buttonPress) { // Button is NOT pressed)
+          menuPos = doEncoder(firstTime,35,4);    //  Hard code of max values for default case  
+          encoderButton();
+          displayOne.clearDisplay();//  Clear the display before going further
+          baseText(menuLevel, menuPos);
+          displayOne.display(); // Force display 
+          if (menuPos == 0) {
+            firstTime = 0;
+          }
+        }
+      }
+      break;
+
+//  SMART LIGHTS ADDRESSING - FLASHING FOR EFFECT
+    case 20:          //  Redirect up one level.  This case does nothing
+     caseIndex = 1;  //  Redirect
+     break;
+     
+    case 11:
+      buttonPress = digitalRead(BUTTONPIN);
+      menuLevel = 2;
+      if (buttonPress && buttonPress != buttonPressed) {
+        while(buttonPress) { // Button is NOT pressed)
+          menuPos = doEncoder(firstTime,35,4);    //  Hard code of max values for default case  
+          encoderButton();
+          displayOne.clearDisplay();//  Clear the display before going further
+          baseText(menuLevel, menuPos);
+          displayOne.display(); // Force display 
+          if (menuPos == 0) {
+            firstTime = 0;
+          }
+        }
+      }
+      break;
+
+    case 21:          //  Redirect up one level.  This case does nothing
+     caseIndex = 11;  //  Redirect
+     break;
+     
+    case 22:          //  Redirect up one level.  This case does nothing
+     caseIndex = 11;  //  Redirect
+     break;
+     
+    case 23:          //  Redirect up one level.  This case does nothing
+     caseIndex = 11;  //  Redirect
+     break;
+     
+    case 24:          //  Redirect up one level.  This case does nothing
+     caseIndex = 11;  //  Redirect
+     break;
+     
+//  SMART LIGHTS FIRE - VIEW STRINGS
+    case 30:          //  Redirect up one level. 
+     caseIndex = 1;  //  Redirect
+     break;
+     
+    case 13:
+      buttonPress = digitalRead(BUTTONPIN);
+      menuLevel = 3;
+      if (buttonPress && buttonPress != buttonPressed) {
+        while(buttonPress) { // Button is NOT pressed)
+          menuPos = doEncoder(firstTime,35,4);    //  Hard code of max values for default case  
+          encoderButton();
+          displayOne.clearDisplay();//  Clear the display before going further
+          baseText(menuLevel, menuPos);
+          displayOne.display(); // Force display 
+          if (menuPos == 0) {
+            firstTime = 0;
+          }
+        }
+      }
+      break;
+
+    case 31:          //  Redirect up one level.  This case does nothing
+     caseIndex = 13;  //  Redirect
+     break;
+     
+//    case 32:          //  Redirect up one level.  This case is covered below
+//     caseIndex = 11;  //  Redirect
 //     break;
      
-//    case 50:          //  Redirect up one level
-//     caseIndex = 10;  //  Redirect
-//     break;
+    case 33:          //  Redirect up one level.  This case does nothing
+     caseIndex = 13;  //  Redirect
+     break;
+     
+    case 34:          //  Redirect up one level.  This case does nothing
+     caseIndex = 13;  //  Redirect
+     break;
+     
+//  SMART LIGHTS FIRE - SET UP STRINGS
+    case 40:          //  Redirect up one level. 
+     caseIndex = 13;  //  Redirect
+     break;
+     
+    case 32:
+      buttonPress = digitalRead(BUTTONPIN);
+      menuLevel = 4;
+      if (buttonPress && buttonPress != buttonPressed) {
+        while(buttonPress) { // Button is NOT pressed)
+          menuPos = doEncoder(firstTime,35,4);    //  Hard code of max values for default case  
+          encoderButton();
+          displayOne.clearDisplay();//  Clear the display before going further
+          baseText(menuLevel, menuPos);
+          displayOne.display(); // Force display 
+          if (menuPos == 0) {
+            firstTime = 0;
+          }
+        }
+      }
+      break;
 
+    case 41:          //  Redirect up one level.  This case does nothing
+     caseIndex = 32;  //  Redirect
+     break;
+     
+    case 42:          //  Redirect up one level.  This case does nothing
+     caseIndex = 32;  //  Redirect
+     break;
+     
+    case 43:          //  Redirect up one level.  This case does nothing
+     caseIndex = 32;  //  Redirect
+     break;
+     
+    case 44:          //  Redirect up one level.  This case does nothing
+     caseIndex = 32;  //  Redirect
+     break;
      
 //  SMART LIGHT MANUAL CONTROL
-    case 14:  
-      encoderButton.tick();
-      menuPos = doEncoder(firstTime,0,0);; //reset the menu position to the top
-      while(encoderButton.isIdle()) { // Button is NOT pressed)
-        menuPos = doEncoder(firstTime,35,4);    //  Hard code of max values for default case  
-        encoderButton.tick();
-        displayOne.clearDisplay();//  Clear the display before going further
-        baseText(5, menuPos);
-        displayOne.setCursor(70,MENUPOSITIONS[1]);
-        displayOne.printf("%i",smartLightAdd);
-        displayOne.setCursor(70,MENUPOSITIONS[2]);
-        displayOne.printf("%i",smartLightHue);
-        displayOne.display(); // Force display 
-      }
-      caseIndex = caseState; 
-      break;
-    
-//  SMART LIGHT MANUAL CONTROL - ADDRESS
-    case 51:  // Input indiviual Smart Light address
-      encoderButton.tick();
-        while(encoderButton.isIdle()) { // Button is NOT pressed)
-          smartLightAdd = doEncoder(0,95,95);    //  Hard code of max values for default case  
+    case 50:          //  Redirect up one level
+     caseIndex = 1;  //  Redirect
+     break;
+
+    case 14:
+      buttonPress = digitalRead(BUTTONPIN);
+      menuLevel = 5;
+      if (buttonPress && buttonPress != buttonPressed) {
+        while(buttonPress) { // Button is NOT pressed)
+          menuPos = doEncoder(firstTime,35,4);    //  Hard code of max values for default case  
+          encoderButton();
           displayOne.clearDisplay();//  Clear the display before going further
-          baseText(5, 1);
+          baseText(menuLevel, menuPos);
           displayOne.setCursor(70,MENUPOSITIONS[1]);
           displayOne.printf("%i",smartLightAdd);
           displayOne.setCursor(70,MENUPOSITIONS[2]);
           displayOne.printf("%i",smartLightHue);
           displayOne.display(); // Force display 
-          encoderButton.tick();
-          Serial.printf("(50)Case Index = %i \n",caseIndex);
+          if (menuPos == 0) {
+            firstTime = 0;
+          }
         }
-    caseIndex = 14;
+      }
+
+//  SMART LIGHT MANUAL CONTROL - ADDRESS
+    case 51:  // Input indiviual Smart Light address
+      buttonPress = digitalRead(BUTTONPIN);
+      if (buttonPress && buttonPress != buttonPressed) {
+        while(buttonPress) { // Button is NOT pressed)
+          smartLightAdd = doEncoder(0,95,95);    //  Hard code of max values for default case  
+          displayOne.clearDisplay();//  Clear the display before going further
+          baseText(menuLevel, 1);
+          displayOne.setCursor(70,MENUPOSITIONS[1]);
+          displayOne.printf("%i",smartLightAdd);
+          displayOne.setCursor(70,MENUPOSITIONS[2]);
+          displayOne.printf("%i",smartLightHue);
+          displayOne.display(); // Force display 
+          buttonPress = digitalRead(BUTTONPIN);
+          Serial.printf("(50)Case Index = %i \n",caseIndex);
+          caseIndex = 14;
+        }
+      }
     break;
 
 //  SMART LIGHT MANUAL CONTROL - HUE
      case 52:  // Input indiviual Smart Light Hue
-      encoderButton.tick();
-        while(encoderButton.isIdle()) { // Button is NOT pressed)
+      buttonPress = digitalRead(BUTTONPIN);
+      if (buttonPress && buttonPress != buttonPressed) {
+        while(buttonPress) { // Button is NOT pressed)
           smartLightHue = doEncoder(0,65353 ,65353);    //  Hard code of max values for default case  
           displayOne.clearDisplay();//  Clear the display before going further
-          baseText(5, 2);
+          baseText(menuLevel, 2);
           displayOne.setCursor(70,MENUPOSITIONS[1]);
           displayOne.printf("%i",smartLightAdd);
           displayOne.setCursor(70,MENUPOSITIONS[2]);
           displayOne.printf("%i",smartLightHue);
           displayOne.display(); // Force display 
-          encoderButton.tick();
+          buttonPress = digitalRead(BUTTONPIN);
+          caseIndex = 14;
         }
-    caseIndex = 14;
+      }
     break;
 
     
@@ -260,37 +394,47 @@ Serial.printf(" case index %i, address %i \n", caseIndex,smartLightAdd);
 
 
 //  SMART LIGHT DELAY
+    case 60:
+     caseIndex = 1;  //  Redirect
+     break;
+     
     case 12:
-      encoderButton.tick();
-      menuPos = doEncoder(firstTime,0,0);; //reset the menu position to the top
-        while(encoderButton.isIdle()) { // Button is NOT pressed)
+      buttonPress = digitalRead(BUTTONPIN);
+      menuLevel = 6;
+      if (buttonPress && buttonPress != buttonPressed) {
+        while(buttonPress) { // Button is NOT pressed)
           menuPos = doEncoder(firstTime,35,4);    //  Hard code of max values for default case  
-          encoderButton.tick();
+          encoderButton();
           displayOne.clearDisplay();//  Clear the display before going further
-          baseText(6, menuPos);
+          baseText(menuLevel, menuPos);
           displayOne.setCursor(80,MENUPOSITIONS[1]);
           displayOne.printf("%i",smartLightAdd);
           displayOne.setCursor(80,MENUPOSITIONS[3]);
           displayOne.printf("%i",deltaDelay);
           displayOne.display(); // Force display 
+          if (menuPos == 0) {
+            firstTime = 0;
+          }
         }
-      caseIndex = caseState;
+      }
       break;
     
 //  SMART LIGHT DELAY - ADDRESS
     case 61:  // Input indiviual Smart Light address
-      encoderButton.tick();
-        while(encoderButton.isIdle()) { // Button is NOT pressed)
+      buttonPress = digitalRead(BUTTONPIN);
+      if (buttonPress && buttonPress != buttonPressed) {
+        while(buttonPress) { // Button is NOT pressed)
           smartLightAdd = doEncoder(0,95,95);    //  Hard code of max values for default case  
           displayOne.clearDisplay();//  Clear the display before going further
-          baseText(6, 1);
+          baseText(menuLevel, 1);
           displayOne.setCursor(80,MENUPOSITIONS[1]);
           displayOne.printf("%i",smartLightAdd);
           displayOne.display(); // Force display 
-          encoderButton.tick();
-          Serial.printf("(50)Case Index = %i \n",caseIndex);
+          buttonPress = digitalRead(BUTTONPIN);
+          Serial.printf("(61)Case Index = %i \n",caseIndex);
+          caseIndex = 12;
         }
-    caseIndex = 12;
+      }
     break;
 
 //  SMART LIGHT DELAY - INITIALIZE (turn off to start)
@@ -328,39 +472,46 @@ Serial.printf(" case index %i, address %i \n", caseIndex,smartLightAdd);
 
 
    
+//  SMART OUTLET MANUAL CONTROL
     case 2:
-      encoderButton.tick();
-      menuPos = doEncoder(firstTime,0,0);; //reset the menu position to the top
+      buttonPress = digitalRead(BUTTONPIN);
       menuLevel = 7;
-        while(encoderButton.isIdle()) { // Button is NOT pressed)
+      if (buttonPress && buttonPress != buttonPressed) {
+        while(buttonPress) { // Button is NOT pressed)
           menuPos = doEncoder(firstTime,35,4);    //  Hard code of max values for default case  
-          encoderButton.tick();
+          encoderButton();
           displayOne.clearDisplay();//  Clear the display before going further
-          baseText(7, menuPos);
+          baseText(menuLevel, menuPos);
           displayOne.setCursor(70,MENUPOSITIONS[1]);
           displayOne.printf("%i",smartOutletAdd);
           displayOne.display(); // Force display 
+          if (menuPos == 0) {
+            firstTime = 0;
+          }
         }
+      }
           Serial.printf("(2)Case Index = %i \n",caseIndex);
-      caseIndex = caseState;
       break;
     
+//  SMART OUTLET MANUAL CONTROL - ADDRESS
     case 71:  // Input indiviual Smart outlet address
-          Serial.printf("(71)Case Index = %i \n",caseIndex);
-      encoderButton.tick();
-        while(encoderButton.isIdle()) { // Button is NOT pressed)
+      buttonPress = digitalRead(BUTTONPIN);
+      if (buttonPress && buttonPress != buttonPressed) {
+        while(buttonPress) { // Button is NOT pressed)
           smartOutletAdd = doEncoder(0,95,95);    //  Hard code of max values for default case  
           displayOne.clearDisplay();//  Clear the display before going further
-          baseText(7, 1);
+          baseText(menuLevel, 1);
           displayOne.setCursor(70,MENUPOSITIONS[1]);
           displayOne.printf("%i",smartOutletAdd);
           displayOne.display(); // Force display 
-          encoderButton.tick();
-        }
+          buttonPress = digitalRead(BUTTONPIN);
           Serial.printf("(71)Case Index = %i \n",caseIndex);
-    caseIndex = 2;
+          caseIndex = 2;
+        }
+      }
     break;
 
+//  SMART OUTLET MANUAL CONTROL - TURN ON
     case 72:  // Turn ON Smart outlet at individual address
       switchON(smartOutletAdd);
     Serial.println("case 72");
@@ -368,6 +519,7 @@ Serial.printf(" case index %i, address %i \n", caseIndex,smartLightAdd);
       break;
 
     
+//  SMART OUTLET MANUAL CONTROL - TURN OFF
     case 73:  // Turn OFF Smart outlet at individual address
       switchOFF(smartOutletAdd);
     Serial.println("case 73");
@@ -375,6 +527,7 @@ Serial.printf(" case index %i, address %i \n", caseIndex,smartLightAdd);
       break;
 
     
+//  SMART OUTLET MANUAL CONTROL - TURN ALL OFF
     case 74:  // Turn OFF ALL Smart outlets
       for (i=0; i<=maxOutlets; i++) {
       switchOFF(i);
@@ -385,14 +538,23 @@ Serial.printf(" case index %i, address %i \n", caseIndex,smartLightAdd);
 
     
     default:
-      menuPos = doEncoder(firstTime,35,4);    //  Hard code of max values for default case  
-    Serial.println("default");
-
-      encoderButton.tick();
-          Serial.printf("(Default)Case Index = %i \n",caseIndex);
       displayOne.clearDisplay();//  Clear the display before going further
-      baseText(menuLevel, menuPos);
+  displayOne.drawRect(2,2,SCREENWIDTH-2,SCREENHEIGHT-2,MENUCOLOR[1]);
+    displayOne.setCursor(7,30);
+    displayOne.println("Default Screen");
       displayOne.display(); // Force display 
+      delay(1000);
+      caseIndex = 0;
+
+
+//      menuPos = doEncoder(firstTime,35,4);    //  Hard code of max values for default case  
+//    Serial.println("default");
+//
+//      encoderButton();
+//          Serial.printf("(Default)Case Index = %i \n",caseIndex);
+//      displayOne.clearDisplay();//  Clear the display before going further
+//      baseText(menuLevel, menuPos);
+//      displayOne.display(); // Force display 
 //      if (menuPos == 0) {
 //        firstTime = 0;
 //      }
@@ -413,6 +575,17 @@ void baseText(int menuLvl, int menuCursor){  // Set up the recurring text and gr
     displayOne.setCursor(7,MENUPOSITIONS[i]);
     displayOne.println(MENUHOME[0][menuLvl][i]);
   }
+}
+
+void  encoderButton() {
+      buttonPress = digitalRead(BUTTONPIN);
+      if (!buttonPress && buttonPress != buttonPressed) {
+        caseIndex = ((menuLevel) * 10) + menuPos;  // setting case statement index;
+        buttonPressed = buttonPress;
+        firstTime = 1;  // Reset menu cursor to top position in the new menu
+      } else if (buttonPress && buttonPress != buttonPressed) {
+        buttonPressed = buttonPress;
+      } 
 }
 
 int doEncoder (bool newLevel, int encMax, int menuMax) {  //  check for encoder rotary movement
@@ -469,17 +642,6 @@ void click2() {
 
 // TESTCODE
 
-//void  encoderButton() {
-//      buttonPress = digitalRead(BUTTONPIN);
-//      if (!buttonPress && buttonPress != buttonPressed) {
-//        caseIndex = ((menuLevel) * 10) + menuPos;  // setting case statement index;
-//          menuLevel = MENUHOME[1][menuLevel][menuPos].toInt();
-//        buttonPressed = buttonPress;
-//        firstTime = 1;  // Reset menu cursor to top position in the new menu
-//      } else if (buttonPress && buttonPress != buttonPressed) {
-//        buttonPressed = buttonPress;
-//      } 
-//}
 
 
 
