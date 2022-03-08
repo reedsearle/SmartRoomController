@@ -27,14 +27,14 @@ const int MENUPOSITIONS[]  = {5, 15, 25, 35, 45};  // Starting positions for all
 const int MENUCOLOR[]      = {0,1,2}; // Set three colors to print, in order: BLACK, WHITE, INVERSE
 String    MENUHOME[][8][5] = {
                                {
-                                 {"SMART SCANNER",       "* Smart Lights", "* Smart Outlets",      "* IP Address",  ""        },
-                                 {"SMART LIGHTS ",       "* Address",      "* Delay",              "* Fire",        "* Manual"},
-                                 {"SMART LIGHTS ADDR",   "String n (x-Y)", "* Previous String",    "* Next String", ""        },
-                                 {"SMART LIGHTS FIRE1",  "Current String", "* Create New String",  "",              ""        },
-                                 {"SMART LIGHTS FIRE2",  "* Total Lights", "* Addresses in order", "",              ""        },
-                                 {"SMART LIGHTS MANUAL", "* Address",      "* Hue",                "* Brightness",  "On / Off"},
-                                 {"SMART LIGHTS DELAY",  "* Address",      "* Initialize",         "* Run",         ""        },
-                                 {"SMART OUTLETS ",      "* Address",      "* On / Off",           "* All Off",     ""        }
+                                 {"SMART SCANNER",       "* Smart Lights", "* Smart Outlets",      "* IP Address",  ""          },
+                                 {"SMART LIGHTS ",       "* Address",      "* Delay",              "* Fire",        "* Manual"  },
+                                 {"SMART LIGHTS ADDR",   "String n (x-Y)", "* Previous String",    "* Next String", ""          },
+                                 {"SMART LIGHTS FIRE1",  "Current String", "* Create New String",  "",              ""          },
+                                 {"SMART LIGHTS FIRE2",  "* Total Lights", "* Addresses in order", "",              ""          },
+                                 {"SMART LIGHTS MANUAL", "* Address",      "* Hue",                "* Turn ON",     "* Turn OFF"},
+                                 {"SMART LIGHTS DELAY",  "* Address",      "* Initialize",         "* Run",         ""          },
+                                 {"SMART OUTLETS ",      "* Address",      "* Turn ON",            "* Turn OFF",    "* All Off" }
                                },
                                {
                                  {0, 1, 7, 0, 0},  //  indicies for next menu level
@@ -42,7 +42,7 @@ String    MENUHOME[][8][5] = {
                                  {1, 2, 2, 2, 2},  //  indicies for next menu level
                                  {1, 3, 4, 3, 3},  //  indicies for next menu level
                                  {3, 4, 4, 4, 4},  //  indicies for next menu level
-                                 {1, 9, 5, 5, 5},  //  indicies for next menu level
+                                 {1, 5, 5, 5, 5},  //  indicies for next menu level
                                  {1, 6, 6, 6, 6},  //  indicies for next menu level
                                  {0, 7, 7, 7, 7}   //  indicies for next menu level
                                }
@@ -83,6 +83,7 @@ bool firstTime;                   // indicates a new menu level has been request
 bool fallEdge;
 
 int smartLightAdd;              // Address of the current smart light
+int smartLightHue;              // Hue of the current smart light
 
 int caseIndex;
 
@@ -142,56 +143,93 @@ void setup() {
 void loop() {
 
   switch (caseIndex) {
+    case 14:
+     caseIndex = 50;
+     break;
+     
+    case 50:
+      buttonPress = digitalRead(BUTTONPIN);
+      if (buttonPress && buttonPress != buttonPressed) {
+        while(buttonPress) { // Button is NOT pressed)
+          menuPos = doEncoder(firstTime,35,4);    //  Hard code of max values for default case  
+          encoderButton();
+          displayOne.clearDisplay();//  Clear the display before going further
+          baseText(5, menuPos);
+          displayOne.setCursor(70,MENUPOSITIONS[1]);
+          displayOne.printf("%i",smartLightAdd);
+          displayOne.setCursor(70,MENUPOSITIONS[2]);
+          displayOne.printf("%i",smartLightHue);
+          displayOne.display(); // Force display 
+          if (menuPos == 0) {
+            firstTime = 0;
+          }
+        }
+      }
+      break;
+    
     case 51:  // Input indiviual Smart Light address
       buttonPress = digitalRead(BUTTONPIN);
-Serial.printf("edge = %i\n",fallEdge);
       if (buttonPress && buttonPress != buttonPressed) {
-//      if(fallEdge) {
         while(buttonPress) { // Button is NOT pressed)
           smartLightAdd = doEncoder(0,95,95);    //  Hard code of max values for default case  
-Serial.printf("address = %i\n",smartLightAdd);
           displayOne.clearDisplay();//  Clear the display before going further
           baseText(5, 1);
           displayOne.setCursor(70,MENUPOSITIONS[1]);
           displayOne.printf("%i",smartLightAdd);
+          displayOne.setCursor(70,MENUPOSITIONS[2]);
+          displayOne.printf("%i",smartLightHue);
           displayOne.display(); // Force display 
           buttonPress = digitalRead(BUTTONPIN);
-          caseIndex = 0;
+          Serial.printf("(50)Case Index = %i \n",caseIndex);
+          caseIndex = 50;
+        }
+      }
+    break;
+
+     case 52:  // Input indiviual Smart Light Hue
+      buttonPress = digitalRead(BUTTONPIN);
+      if (buttonPress && buttonPress != buttonPressed) {
+        while(buttonPress) { // Button is NOT pressed)
+          smartLightHue = doEncoder(0,95,95);    //  Hard code of max values for default case  
+          displayOne.clearDisplay();//  Clear the display before going further
+          baseText(5, 2);
+          displayOne.setCursor(70,MENUPOSITIONS[1]);
+          displayOne.printf("%i",smartLightAdd);
+          displayOne.setCursor(70,MENUPOSITIONS[2]);
+          displayOne.printf("%i",smartLightHue);
+          displayOne.display(); // Force display 
+          buttonPress = digitalRead(BUTTONPIN);
+          caseIndex = 50;
         }
       }
     break;
 
     
-    case 54:  // Toggle Smart light at individual address
-//      setHue(smartLightAdd,false,0,0,0);
-      delay(5000);
-//      setHue(smartLightAdd,true,255,255,255);
+    case 53:  // Turn ON Smart light at individual address
+      setHue(smartLightAdd,true,smartLightHue,255,255);
+    Serial.println("case 53");
 
-      caseIndex = 0;
+      caseIndex = 50;
+      break;
+
+    
+    case 54:  // Turn OFF Smart light at individual address
+      setHue(smartLightAdd,false,0,0,0);
+    Serial.println("case 54");
+
+      caseIndex = 50;
       break;
 
     
     default:
       menuPos = doEncoder(firstTime,35,4);    //  Hard code of max values for default case  
+    Serial.println("default");
 
-      buttonPress = digitalRead(BUTTONPIN);
-      if (!buttonPress && buttonPress != buttonPressed) {
-        caseIndex = ((menuLevel) * 10) + menuPos;  // setting case statement index;
-        if (MENUHOME[1][menuLevel][menuPos].toInt() < 9) { // "9" is used to indicate that work needs to be done, not menu function
-          menuLevel = MENUHOME[1][menuLevel][menuPos].toInt();
-        }
-        buttonPressed = buttonPress;
-        firstTime = 1;  // Reset menu cursor position in the new menu
-        fallEdge = 0;   // Button has been pressed
-      } else if (buttonPress && buttonPress != buttonPressed) {
-        buttonPressed = buttonPress;
-        fallEdge = 1;  // Button has returned to idle state
-      } 
-
+      encoderButton();
+          Serial.printf("(Default)Case Index = %i \n",caseIndex);
       displayOne.clearDisplay();//  Clear the display before going further
       baseText(menuLevel, menuPos);
       displayOne.display(); // Force display 
-
       if (menuPos == 0) {
         firstTime = 0;
       }
@@ -252,6 +290,19 @@ void printIP() {
   Serial.printf("%i\n",Ethernet.localIP()[3]);
 }
 
+void  encoderButton() {
+      buttonPress = digitalRead(BUTTONPIN);
+      if (!buttonPress && buttonPress != buttonPressed) {
+        caseIndex = ((menuLevel) * 10) + menuPos;  // setting case statement index;
+//        if (MENUHOME[1][menuLevel][menuPos].toInt() < 9) { // "9" is used to indicate that work needs to be done, not menu function
+          menuLevel = MENUHOME[1][menuLevel][menuPos].toInt();
+//        }
+        buttonPressed = buttonPress;
+        firstTime = 1;  // Reset menu cursor to top position in the new menu
+      } else if (buttonPress && buttonPress != buttonPressed) {
+        buttonPressed = buttonPress;
+      } 
+}
 
 
 // TESTCODE
