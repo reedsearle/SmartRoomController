@@ -17,6 +17,7 @@
 #include <mac.h>
 #include <hue.h>
 #include <wemo.h>
+#include <OneButton.h>
 
 
 // OLED screen constants
@@ -94,7 +95,7 @@ bool firstTime;                   // indicates a new menu level has been request
 int lightIn;
 
 // Fire Button variables
-int fireButton;
+bool fireButtonState;
 
 int smartLightAdd;              // Address of the current smart light
 int smartLightHue;              // Hue of the current smart light
@@ -123,6 +124,7 @@ int i,j;
 // Constructors
 Adafruit_SSD1306  displayOne(SCREENWIDTH, SCREENHEIGHT, &Wire, OLEDRESET);
 Encoder           encOne(ENCAPIN, ENCBPIN);
+OneButton         fireButton(FIREBUTTONPIN, true, true);
 
 //TEST CODE
 int wemoDevice = 3;  // fan on my desk
@@ -134,6 +136,9 @@ void setup() {
     Serial.printf("OLED display did not initialize correctly.  Please reset.\n");
     while(1);  //  You shall not pass 
   }
+  displayOne.display(); // show the Adafruit logo stored in memory
+  delay(1000);  //  delay to see logo but get rid of this later
+
   displayOne.clearDisplay();  // Clear OLED
   displayOne.setTextSize(1);  // Set text size
   displayOne.setCursor(7,5);  // Move cursor towrds the top
@@ -153,7 +158,15 @@ void setup() {
   Serial.printf("LinkStatus: %i  \n",Ethernet.linkStatus());
 
   pinMode(BUTTONPIN,     INPUT_PULLUP);
-  pinMode(FIREBUTTONPIN, INPUT_PULLUP);
+
+// Start OneButton
+  fireButton.attachClick(click1);             // Set CLICK1 as function for single click
+//  fireButton.attachDoubleClick(click2);       // Set CLICK2 as function for double click
+  fireButton.attachLongPressStart(LPstart);   // Set LPstart as function for double click
+//  fireButton.attachLongPressStop(LPstop);     // Set LPstop as function for double click
+//  fireButton.attachDuringLongPress(LPduring); // Set LPduringK2 as function for double click
+  fireButtonState = 0;  //  Fire button has NOT been pressed
+
 
   buttonPress    = 0;                     // Initial state is button NOT pressed
   buttonPressed  = 0;                     // Initial state is buttonhas NOT been pressed
@@ -183,9 +196,13 @@ void setup() {
 
 // *******************  LOOP  *********************** //
 void loop() {
-
+  fireButton.tick();
+  if (fireButtonState) {
+    fireFireFire();
+  } else {
   switch (caseIndex) {
     case 0:  // Home State
+      fireButton.tick();
       menuPos = doEncoder(firstTime,35,4);    //  Hard code of max values for default case
       menuLevel = 0;  
       encoderButton();
@@ -213,10 +230,12 @@ void loop() {
      break;
      
     case 1:
+      fireButton.tick();
       buttonPress = digitalRead(BUTTONPIN);
       menuLevel = 1;
       if (buttonPress && buttonPress != buttonPressed) {
         while(buttonPress) { // Button is NOT pressed)
+          fireButton.tick();
           menuPos = doEncoder(firstTime,35,4);    //  Hard code of max values for default case  
           encoderButton();
           displayOne.clearDisplay();//  Clear the display before going further
@@ -236,10 +255,12 @@ void loop() {
      break;
      
     case 11:
+      fireButton.tick();
       buttonPress = digitalRead(BUTTONPIN);
       menuLevel = 2;
       if (buttonPress && buttonPress != buttonPressed) {
         while(buttonPress) { // Button is NOT pressed)
+          fireButton.tick();
           menuPos = doEncoder(firstTime,35,4);    //  Hard code of max values for default case  
           encoderButton();
           startBatch = 3*(lightBatch-1)+1;
@@ -275,6 +296,7 @@ void loop() {
       break;
      
     case 24:          //  Redirect up one level.  This case does nothing
+      fireButton.tick();
       buttonPress = digitalRead(BUTTONPIN);
       if (buttonPress && buttonPress != buttonPressed) {
         while(buttonPress) { // Button is NOT pressed)
@@ -301,10 +323,12 @@ void loop() {
      break;
      
     case 13:
+      fireButton.tick();
       buttonPress = digitalRead(BUTTONPIN);
       menuLevel = 3;
       if (buttonPress && buttonPress != buttonPressed) {
         while(buttonPress) { // Button is NOT pressed)
+          fireButton.tick();
           menuPos = doEncoder(firstTime,35,4);    //  Hard code of max values for default case  
           encoderButton();
           displayOne.clearDisplay();//  Clear the display before going further
@@ -324,12 +348,14 @@ void loop() {
      caseIndex = 13;  //  Redirect
      break;
      
-    case 32:          //  Redirect up one level.  This case is covered below
-      j = 0;
+    case 32:          //  
+       fireButton.tick();
+     j = 0;
       while (j<=2) {  //  go through all three addresses
       buttonPress = digitalRead(BUTTONPIN);
       if (buttonPress && buttonPress != buttonPressed) {
           while(buttonPress) { // Button is NOT pressed)
+            fireButton.tick();
             fireBatch[j] = doEncoder(0,95,95);    //  Hard code of max values for default case  
             displayOne.clearDisplay();//  Clear the display before going further
             baseText(menuLevel, 1);
@@ -346,7 +372,8 @@ void loop() {
       }
      break;
      
-    case 33:          //  Redirect up one level.  This case does nothing
+    case 33:          //  
+      fireButton.tick();
       for(i=0; i<=1; i++) {  //flash for 10 times
         for (j=0; j<=2; j++) { // flash the string
           setHue(fireBatch[j],true,HueRed,255,255);
@@ -365,54 +392,18 @@ void loop() {
      caseIndex = 13;  //  Redirect
      break;
      
-//  SMART LIGHTS FIRE - SET UP STRINGS ?? NOT USED ANYMORE ??
-//    case 40:          //  Redirect up one level. 
-//     caseIndex = 13;  //  Redirect
-//     break;
-//     
-//    case 32:
-//      buttonPress = digitalRead(BUTTONPIN);
-//      menuLevel = 4;
-//      if (buttonPress && buttonPress != buttonPressed) {
-//        while(buttonPress) { // Button is NOT pressed)
-//          menuPos = doEncoder(firstTime,35,4);    //  Hard code of max values for default case  
-//          encoderButton();
-//          displayOne.clearDisplay();//  Clear the display before going further
-//          baseText(menuLevel, menuPos);
-//          displayOne.display(); // Force display 
-//          if (menuPos == 0) {
-//            firstTime = 0;
-//          }
-//        }
-//      }
-//      break;
-//
-//    case 41:          //  Redirect up one level.  This case does nothing
-//     caseIndex = 32;  //  Redirect
-//     break;
-//     
-//    case 42:          //  Redirect up one level.  This case does nothing
-//     caseIndex = 32;  //  Redirect
-//     break;
-//     
-//    case 43:          //  Redirect up one level.  This case does nothing
-//     caseIndex = 32;  //  Redirect
-//     break;
-//     
-//    case 44:          //  Redirect up one level.  This case does nothing
-//     caseIndex = 32;  //  Redirect
-//     break;
-     
 //  SMART LIGHT MANUAL CONTROL
     case 50:          //  Redirect up one level
      caseIndex = 1;  //  Redirect
      break;
 
     case 14:
+      fireButton.tick();
       buttonPress = digitalRead(BUTTONPIN);
       menuLevel = 5;
       if (buttonPress && buttonPress != buttonPressed) {
         while(buttonPress) { // Button is NOT pressed)
+          fireButton.tick();
           menuPos = doEncoder(firstTime,35,4);    //  Hard code of max values for default case  
           encoderButton();
           displayOne.clearDisplay();//  Clear the display before going further
@@ -431,9 +422,11 @@ void loop() {
 
 //  SMART LIGHT MANUAL CONTROL - ADDRESS
     case 51:  // Input indiviual Smart Light address
+      fireButton.tick();
       buttonPress = digitalRead(BUTTONPIN);
       if (buttonPress && buttonPress != buttonPressed) {
         while(buttonPress) { // Button is NOT pressed)
+          fireButton.tick();
           smartLightAdd = doEncoder(0,95,95);    //  Hard code of max values for default case  
           displayOne.clearDisplay();//  Clear the display before going further
           baseText(menuLevel, 1);
@@ -451,9 +444,11 @@ void loop() {
 
 //  SMART LIGHT MANUAL CONTROL - HUE
      case 52:  // Input indiviual Smart Light Hue
+      fireButton.tick();
       buttonPress = digitalRead(BUTTONPIN);
       if (buttonPress && buttonPress != buttonPressed) {
         while(buttonPress) { // Button is NOT pressed)
+          fireButton.tick();
           smartLightHue = doEncoder(0,65353 ,65353);    //  Hard code of max values for default case  
           displayOne.clearDisplay();//  Clear the display before going further
           baseText(menuLevel, 2);
@@ -491,10 +486,12 @@ void loop() {
      break;
      
     case 12:
+      fireButton.tick();
       buttonPress = digitalRead(BUTTONPIN);
       menuLevel = 6;
       if (buttonPress && buttonPress != buttonPressed) {
         while(buttonPress) { // Button is NOT pressed)
+          fireButton.tick();
           menuPos = doEncoder(firstTime,35,4);    //  Hard code of max values for default case  
           encoderButton();
           displayOne.clearDisplay();//  Clear the display before going further
@@ -514,9 +511,11 @@ void loop() {
     
 //  SMART LIGHT DELAY - ADDRESS
     case 61:  // Input indiviual Smart Light address
+      fireButton.tick();
       buttonPress = digitalRead(BUTTONPIN);
       if (buttonPress && buttonPress != buttonPressed) {
         while(buttonPress) { // Button is NOT pressed)
+          fireButton.tick();
           smartLightAdd = doEncoder(0,95,95);    //  Hard code of max values for default case  
           displayOne.clearDisplay();//  Clear the display before going further
           baseText(menuLevel, 1);
@@ -544,6 +543,7 @@ void loop() {
       delayStart = millis();
       lightIn = 0;           // Initialize light sensor
       while(lightIn < 100 && delayStart - delayStop <= 10000) {  // Loop while not seeing light and 10 sec timer
+        fireButton.tick();
         lightIn = analogRead(SENSORPIN);
         delayStart = millis();
       }
@@ -567,10 +567,12 @@ void loop() {
    
 //  SMART OUTLET MANUAL CONTROL
     case 2:
+      fireButton.tick();
       buttonPress = digitalRead(BUTTONPIN);
       menuLevel = 7;
       if (buttonPress && buttonPress != buttonPressed) {
         while(buttonPress) { // Button is NOT pressed)
+          fireButton.tick();
           menuPos = doEncoder(firstTime,35,4);    //  Hard code of max values for default case  
           encoderButton();
           displayOne.clearDisplay();//  Clear the display before going further
@@ -589,9 +591,11 @@ void loop() {
     
 //  SMART OUTLET MANUAL CONTROL - ADDRESS
     case 71:  // Input indiviual Smart outlet address
+      fireButton.tick();
       buttonPress = digitalRead(BUTTONPIN);
       if (buttonPress && buttonPress != buttonPressed) {
         while(buttonPress) { // Button is NOT pressed)
+          fireButton.tick();
           smartOutletAdd = doEncoder(0,95,95);    //  Hard code of max values for default case  
           displayOne.clearDisplay();//  Clear the display before going further
           baseText(menuLevel, 1);
@@ -632,6 +636,7 @@ void loop() {
 
     
     default:
+      fireButton.tick();
       displayOne.clearDisplay();//  Clear the display before going further
       displayOne.drawRect(2,2,SCREENWIDTH-2,SCREENHEIGHT-2,MENUCOLOR[1]);
       displayOne.setCursor(7,30);
@@ -642,6 +647,7 @@ void loop() {
       break;
     
   }
+}
 }
 
 void baseText(int menuLvl, int menuCursor){  // Set up the recurring text and graphics
@@ -712,5 +718,76 @@ void printIP() {
   Serial.printf("%i\n",Ethernet.localIP()[3]);
 }
 
+void  fireFireFire() {  //  make fire lights run!
+        for (j=0; j<=2; j++) { // flash the string
+          setHue(fireBatch[j],true,HueRed,255,255);
+          delay(500);
+          fireButton.tick();
+        }
+        for (j=0; j<=2; j++) { // flash the string
+          setHue(fireBatch[j],false,HueRed,255,255);
+          delay(500);
+          fireButton.tick();
+        }
+}
+
+void click1() {  // set fire lights
+  fireButtonState = 1;
+}
+
+//void LPstop() {  // clear fire lights
+//  fireButtonState = 0;
+//  caseIndex = 0;
+//  for (j=0; j<=2; j++) { // flash the string
+//    setHue(fireBatch[j],true,HueRed,255,0);  // Set lights in fire string to white
+//  }
+//}
+
+void LPstart() {  // clear fire lights
+  fireButtonState = 0;
+  caseIndex = 0;
+  for (j=0; j<=2; j++) { // flash the string
+    setHue(fireBatch[j],true,HueRed,255,0);  // Set lights in fire string to white
+  }
+}
+
 
 // TESTCODE
+//  SMART LIGHTS FIRE - SET UP STRINGS ?? NOT USED ANYMORE ??
+//    case 40:          //  Redirect up one level. 
+//     caseIndex = 13;  //  Redirect
+//     break;
+//     
+//    case 32:
+//      buttonPress = digitalRead(BUTTONPIN);
+//      menuLevel = 4;
+//      if (buttonPress && buttonPress != buttonPressed) {
+//        while(buttonPress) { // Button is NOT pressed)
+//          menuPos = doEncoder(firstTime,35,4);    //  Hard code of max values for default case  
+//          encoderButton();
+//          displayOne.clearDisplay();//  Clear the display before going further
+//          baseText(menuLevel, menuPos);
+//          displayOne.display(); // Force display 
+//          if (menuPos == 0) {
+//            firstTime = 0;
+//          }
+//        }
+//      }
+//      break;
+//
+//    case 41:          //  Redirect up one level.  This case does nothing
+//     caseIndex = 32;  //  Redirect
+//     break;
+//     
+//    case 42:          //  Redirect up one level.  This case does nothing
+//     caseIndex = 32;  //  Redirect
+//     break;
+//     
+//    case 43:          //  Redirect up one level.  This case does nothing
+//     caseIndex = 32;  //  Redirect
+//     break;
+//     
+//    case 44:          //  Redirect up one level.  This case does nothing
+//     caseIndex = 32;  //  Redirect
+//     break;
+     
