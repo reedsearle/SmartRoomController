@@ -18,6 +18,7 @@
 #include <hue.h>
 #include <wemo.h>
 #include <OneButton.h>
+#include "logo_bmp.h"
 
 
 // OLED screen constants
@@ -109,8 +110,15 @@ void setup() {
     Serial.printf("OLED display did not initialize correctly.  Please reset.\n");
     while(1);  //  You shall not pass 
   }
-  displayOne.display(); // show the Adafruit logo stored in memory
-  delay(1000);  //  delay to see logo but get rid of this later
+  displayOne.clearDisplay();
+  displayOne.drawBitmap(
+    (displayOne.width()  - SCREENWIDTH ) / 2,
+    (displayOne.height() - SCREENHEIGHT) / 2,
+     epd_bitmap_Decalbw, 
+     SCREENWIDTH, SCREENHEIGHT, 1);
+  displayOne.display();
+  delay(1000);
+
   Serial.printf("OLED display running\n");
 
 
