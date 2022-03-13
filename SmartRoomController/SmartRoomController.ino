@@ -32,7 +32,7 @@ String    MENUHOME[][5] = {
                             {"SMART SCANNER",       "* Smart Lights", "* Smart Outlets",      "",              ""           },
                             {"SMART LIGHTS ",       "* Address",      "* Delay",              "* Fire",        "* Manual"   },
                             {"SMART LIGHTS ADDR",   "",               "* Previous String",    "* Next String", "FLASH"      },
-                            {"SMART LIGHTS FIRE",   "FIRE String",    "* Create New String",  "* Test",        ""           },
+                            {"SMART LIGHTS FIRE",   "* FIRE Addr",    "* Test",               "",              ""          },
                             {"SMART LIGHTS FIRE2",  "* Total Lights", "* Addresses in order", "",              ""           },
                             {"SMART LIGHTS MANUAL", "* Address",      "* Hue",                "* Turn ON",     "* Turn OFF" },
                             {"SMART LIGHTS DELAY",  "* Address",      "* Initialize",         "* Run Delay",   ""           },
@@ -63,14 +63,17 @@ int lightIn;               //  value of the light being received by the photores
 
 // Fire Button variables
 bool fireButtonState;      //  Determines if the FIRE button has been pressed
+int  fireBatch[3];         //  Address register for the lights in a fire string
+bool fireFlash;            //  alternates between white and inverse for display
+int holdHue[3];            //  Temporary register to hold HUE values when lights are being changed
+int holdBri[3];            //  Temporary register to hold HUE values when lights are being changed
 
 int smartLightAddD;        // Address of the current smart light in DELAY
 int smartLightAddM;        // Address of the current smart light in MANUAL
 int smartLightHue;         // Hue of the current smart light
 int lightBatch;            //  Integer number representing an index of strings of lights
 int startBatch;            //  Starting address of a batch of lights to flash in orer to determine their address
-int holdHue;               //  Temporary register to hold HUE values when lights are being changed
-int fireBatch[3];          //  Address register for the lights in a fire string
+
 
 int smartOutletAdd;        // Address of the current smart light
 int maxOutlets;            // Maximum number of smart outlets on network
@@ -270,7 +273,7 @@ void loop() {
      
 //**********************************************************//
 //**********************************************************//
-    case 11:
+    case 11:                                               // Smart Light ADDRESS Flashing Top menu
       fireButton.tick();                                   //  Check state of the Fire Button
       buttonPress = digitalRead(BUTTONPIN);                //  Read the encoder Button but do not change state
       menuLevel = 2;                                       //  Set menu level 2 for the screen text
@@ -295,14 +298,16 @@ void loop() {
       break;
 
 //**********************************************************//
+//       EMPTY CASE
 //**********************************************************//
-    case 21:          //  Redirect up one level.  This case does nothing
+    case 21:          //  Redirect up one level. 
      caseIndex = 11;  //  Redirect
      break;
      
 //**********************************************************//
+//        Move to previous batch
 //**********************************************************//
-    case 22:          //  Redirect up one level.  This case does nothing
+    case 22:          // 
       if (lightBatch > 1) {
         lightBatch--;
       } else {
@@ -312,19 +317,24 @@ void loop() {
       break;
      
 //**********************************************************//
+//        Move to next batch
 //**********************************************************//
-    case 23:          //  Redirect up one level.  This case does nothing
+    case 23:          //  
       lightBatch++;
       caseIndex = 11;  //  Redirect
       break;
      
 //**********************************************************//
+//           Smart Light ADDRESS Flashing State
 //**********************************************************//
-    case 24:          //  Redirect up one level.  This case does nothing
+    case 24:                                               //  Smart Light ADDRESS Flashing State 
       fireButton.tick();                                   //  Check state of the Fire Button
       buttonPress = digitalRead(BUTTONPIN);                //  Read the encoder Button but do not change state
       if (buttonPress && buttonPress != buttonPressed) {   //  Check for rising edge of encoder button to be certain finger is OFF of button
-//  Insert method of reading initial hues (and brightness?)
+      for (j=0; j<=2; j++) {                               // Capture Hue and brightness for lights in fire string
+        holdHue[j] = getColor(fireBatch[j]);               // Read the color from the designated light in Fire string
+        holdBri[j] = getBrightness(fireBatch[j]);          // Read the brightness from the designated light in Fire string
+      }
         while(buttonPress) {                               //  make CERTAIN encoder button is not being pressed.  Pressing button SELECTS
             setHue(startBatch ,   true,HueRed,255,255);    //  Set initial color of first light in batch 
             setHue(startBatch +1, true,HueRed,255,255);    //  Set initial color of second light in batch
@@ -336,7 +346,7 @@ void loop() {
           delay(1000);
         }
           for (j=0; j<=2; j++) {                           // Index through the string
-            setHue(startBatch +j,true,HueRed,255,0);       // Turn all lights in current string to white. This is where the lights should return to their initial values
+            setHue(startBatch +j,true,holdHue[j],holdBri[j],255);  // Return all lights in current string to previous values. 
           }
         }
   
@@ -362,8 +372,9 @@ void loop() {
      break;
      
 //**********************************************************//
+//              Smart Light Fire Exit Light Top menu
 //**********************************************************//
-    case 13:
+    case 13:                                               // Smart Light Fire Exit Light Top menu
       fireButton.tick();                                   //  Check state of the Fire Button
       buttonPress = digitalRead(BUTTONPIN);                //  Read the encoder Button but do not change state
       menuLevel = 3;                                       //  Set menu level 3 for the screen text
@@ -387,21 +398,15 @@ void loop() {
       break;
 
 //**********************************************************//
-//        RETURN
+//      Smart Light Fire Exit Light Address selection
 //**********************************************************//
-    case 31:          //  Redirect up one level.  This case does nothing
-     caseIndex = 13;  //  Redirect
-     break;
-     
-//**********************************************************//
-//**********************************************************//
-    case 32:                                                  //  
+    case 31:                                                  //  Smart Light Fire Exit Light Address selection
        fireButton.tick();                                     //  Check state of the Fire Button
      j = 0;
       while (j<=2) {                                          //  go through all three addresses
       buttonPress = digitalRead(BUTTONPIN);                   //  Read the encoder Button but do not change state
       if (buttonPress && buttonPress != buttonPressed) {      //  Check for rising edge of encoder button to be certain finger is OFF of button
-      throwAway = doEncoder(0,0,95,1,23, fireBatch[j]);       //  force initial values to the encoder   
+      throwAway = doEncoder(0,0,95,0,23, fireBatch[j]);       //  force initial values to the encoder   
           while(buttonPress) {                                //  make CERTAIN encoder button is not being pressed.  Pressing button SELECTS
             fireButton.tick();                                //  Check state of the Fire Button
             fireBatch[j] = doEncoder(0,0,95,1,23,-1);         //  Get address value from the encoder, -1 indicates do not preset the value 
@@ -420,26 +425,42 @@ void loop() {
      break;
      
 //**********************************************************//
+//       Fire Exit Light Test
 //**********************************************************//
-    case 33:          //  
-      fireButton.tick();                                   //  Check state of the Fire Button
-      for(i=0; i<=1; i++) {  //flash for 10 times
-        for (j=0; j<=2; j++) { // flash the string
+    case 32:                                                //  Fire Exit Light Test 
+      fireButton.tick();                                    //  Check state of the Fire Button
+      for (j=0; j<=2; j++) {                               // Capture Hue and brightness for lights in fire string
+        holdHue[j] = getColor(fireBatch[j]);               // Read the color from the designated light in Fire string
+        holdBri[j] = getBrightness(fireBatch[j]);          // Read the brightness from the designated light in Fire string
+      }
+      for(i=0; i<=1; i++) {                                 //  flash twice
+        for (j=0; j<=2; j++) {                              //  index the string
           setHue(fireBatch[j],true,HueRed,255,255);
-          delay(500);
+          delay(500);                                       //  Delay for trailing effect
         }
-        for (j=0; j<=2; j++) { // flash the string
-          setHue(fireBatch[j],false,HueRed,255,255);
-          delay(500);
+        for (j=0; j<=2; j++) {                              //  index the string
+          setHue(fireBatch[j],false,HueRed,255,255);        //  Set indexed light to OFF
+          delay(500);                                       //  Delay for trailing effect
         }
-        delay(1000);
+        delay(1000);                                        //  Delay for trailing effect
+      }
+      for (j=0; j<=2; j++) {                                // Index through the string
+        setHue(startBatch +j,true,holdHue[j],holdBri[j],255);  // Return all lights in current string to previous values. 
       }
      caseIndex = 13;  //  Redirect
      break;
      
 //**********************************************************//
+//        EMPTY CASE
 //**********************************************************//
-    case 34:          //  Redirect up one level.  This case does nothing
+    case 33:          //  Redirect up one level. 
+     caseIndex = 13;  //  Redirect
+     break;
+     
+//**********************************************************//
+//       EMPTY CASE
+//**********************************************************//
+    case 34:          //  Redirect up one level.
      caseIndex = 13;  //  Redirect
      break;
 
@@ -471,18 +492,18 @@ void loop() {
       menuLevel = 5;                                       //  Set menu level 5 for the screen text
       if (buttonPress && buttonPress != buttonPressed) {   //  Check for rising edge of encoder button to be certain finger is OFF of button
       throwAway = doEncoder(0, 0, 35 , 0, 4, 0);           //  force initial values to the encoder   
-        while(buttonPress) {                                //  make CERTAIN encoder button is not being pressed.  Pressing button SELECTS
-          fireButton.tick();                                   //  Check state of the Fire Button
-          menuPos = doEncoder(firstTime,0,35,0,4,-1);       //  Find new value for the menu position   
-          encoderButton();                                     //  Check value of the encoder button and change state
-          displayOne.clearDisplay();//  Clear the display before going further
+        while(buttonPress) {                               //  make CERTAIN encoder button is not being pressed.  Pressing button SELECTS
+          fireButton.tick();                               //  Check state of the Fire Button
+          menuPos = doEncoder(firstTime,0,35,0,4,-1);      //  Find new value for the menu position   
+          encoderButton();                                 //  Check value of the encoder button and change state
+          displayOne.clearDisplay();                       //  Clear the display before going further
           baseText(menuLevel, menuPos);                    //  Print the background text and graphics for this menu level
-          displayOne.setTextColor(MENUCOLOR[1]);               //  Set OLED color to white to print text
-          displayOne.setCursor(70,MENUPOSITIONS[1]);        //  Move to the position to print the display string below
-          displayOne.printf("%i",smartLightAddM);
-          displayOne.setCursor(70,MENUPOSITIONS[2]);        //  Move to the position to print the display string below
-          displayOne.printf("0x%04X",smartLightHue);
-          displayOne.display(); // Force display 
+          displayOne.setTextColor(MENUCOLOR[1]);           //  Set OLED color to white to print text
+          displayOne.setCursor(70,MENUPOSITIONS[1]);       //  Move to the position to print the display string below
+          displayOne.printf("%i",smartLightAddM);          //  Print the current address
+          displayOne.setCursor(70,MENUPOSITIONS[2]);       //  Move to the position to print the display string below
+          displayOne.printf("0x%04X",smartLightHue);       //  Print the current HUE
+          displayOne.display();                            // Force display 
           if (menuPos == 0) {                              //  Let cursor move freely
             firstTime = 0;
           }
@@ -496,7 +517,7 @@ void loop() {
       fireButton.tick();                                  //  Check to see if the Fire Button has been pressed
       buttonPress = digitalRead(BUTTONPIN);               //  Check to see status of the encoder Button has been pressed
       if (buttonPress && buttonPress != buttonPressed) {  //  Check for the rising edge of the encoder button (finger coming off the button
-      throwAway = doEncoder(0,0,95,1,23, smartLightAddM); //  Hard code of max values for default case  
+      throwAway = doEncoder(0,0,95,0,23, smartLightAddM); //  Hard code of max values for default case  
         while(buttonPress) {                              //  Button is NOT pressed
           fireButton.tick();                              //  Check to see if the Fire Button has been pressed
           smartLightAddM = doEncoder(0,0,95,1,23, -1);    //  Get address value from the encoder, -1 indicates do not preset the value  
@@ -516,22 +537,22 @@ void loop() {
 //**********************************************************//
 //  SMART LIGHT MANUAL CONTROL - HUE
 //**********************************************************//
-     case 52:  // Input indiviual Smart Light Hue
-      fireButton.tick();                                   //  Check state of the Fire Button
-      buttonPress = digitalRead(BUTTONPIN);                //  Read the encoder Button but do not change state
-      if (buttonPress && buttonPress != buttonPressed) {   //  Check for rising edge of encoder button to be certain finger is OFF of button
-      throwAway = doEncoder(0,0,255 ,0,65353, smartLightHue);           //  force initial values to the encoder   
-        while(buttonPress) {                                //  make CERTAIN encoder button is not being pressed.  Pressing button SELECTS
+     case 52:                                                  // Input indiviual Smart Light Hue
+      fireButton.tick();                                       //  Check state of the Fire Button
+      buttonPress = digitalRead(BUTTONPIN);                    //  Read the encoder Button but do not change state
+      if (buttonPress && buttonPress != buttonPressed) {       //  Check for rising edge of encoder button to be certain finger is OFF of button
+      throwAway = doEncoder(0,0,255 ,0,65353, smartLightHue);  //  force initial values to the encoder   
+        while(buttonPress) {                                   //  make CERTAIN encoder button is not being pressed.  Pressing button SELECTS
           fireButton.tick();                                   //  Check state of the Fire Button
           smartLightHue = doEncoder(0,0,255 ,0,65353, -1);     //  Get address value from the encoder, -1 indicates do not preset the value 
-          displayOne.clearDisplay();//  Clear the display before going further
-          baseText(menuLevel, 2);                    //  Print the background text and graphics for this menu level
-          displayOne.setCursor(70,MENUPOSITIONS[1]);        //  Move to the position to print the display string below
-          displayOne.printf("%i",smartLightAddM);
-          displayOne.setCursor(70,MENUPOSITIONS[2]);        //  Move to the position to print the display string below
-          displayOne.printf("0x%04X",smartLightHue);
-          displayOne.display(); // Force display 
-          buttonPress = digitalRead(BUTTONPIN);           //  Check if the button has been pressed to select the hue
+          displayOne.clearDisplay();                           //  Clear the display before going further
+          baseText(menuLevel, 2);                              //  Print the background text and graphics for this menu level
+          displayOne.setCursor(70,MENUPOSITIONS[1]);           //  Move to the position to print the display string below
+          displayOne.printf("%i",smartLightAddM);              //  Print the current address
+          displayOne.setCursor(70,MENUPOSITIONS[2]);           //  Move to the position to print the display string below
+          displayOne.printf("0x%04X",smartLightHue);           //  Print the current HUE
+          displayOne.display();                                // Force display 
+          buttonPress = digitalRead(BUTTONPIN);                //  Check if the button has been pressed to select the hue
           caseIndex = 14;
         }
       }
@@ -542,7 +563,7 @@ void loop() {
 //**********************************************************//
 //  SMART LIGHT MANUAL CONTROL - TURN ON
 //**********************************************************//
-    case 53:  // Turn ON Smart light at individual address
+    case 53:                                              // Turn ON Smart light at individual address
       setHue(smartLightAddM,true,smartLightHue,255,255);
       delay(250); // Debounce
       caseIndex = 14;
@@ -552,7 +573,7 @@ void loop() {
 //**********************************************************//
 //  SMART LIGHT MANUAL CONTROL - TURN OFF
 //**********************************************************//
-    case 54:  // Turn OFF Smart light at individual address
+    case 54:                                              // Turn OFF Smart light at individual address
       setHue(smartLightAddM,false,0,0,0);
       caseIndex = 14;
       delay(250); // Debounce
@@ -579,24 +600,24 @@ void loop() {
 //**********************************************************//
 //**********************************************************//
     case 12:
-      fireButton.tick();                                   //  Check state of the Fire Button
-      buttonPress = digitalRead(BUTTONPIN);                //  Read the encoder Button but do not change state
-      menuLevel = 6;                                       //  Set menu level 6 for the screen text
-      if (buttonPress && buttonPress != buttonPressed) {   //  Check for rising edge of encoder button to be certain finger is OFF of button
-      throwAway = doEncoder(0, 0, 35 , 0, 4, 0);           //  force initial values to the encoder   
+      fireButton.tick();                                    //  Check state of the Fire Button
+      buttonPress = digitalRead(BUTTONPIN);                 //  Read the encoder Button but do not change state
+      menuLevel = 6;                                        //  Set menu level 6 for the screen text
+      if (buttonPress && buttonPress != buttonPressed) {    //  Check for rising edge of encoder button to be certain finger is OFF of button
+      throwAway = doEncoder(0, 0, 35 , 0, 4, 0);            //  force initial values to the encoder   
         while(buttonPress) {                                //  make CERTAIN encoder button is not being pressed.  Pressing button SELECTS
-          fireButton.tick();                                   //  Check state of the Fire Button
-          menuPos = doEncoder(firstTime, 0, 35, 0, 4, -1);      //  Find new value for the menu position   
-          encoderButton();                                     //  Check value of the encoder button and change state
-          displayOne.clearDisplay();//  Clear the display before going further
-          baseText(menuLevel, menuPos);                    //  Print the background text and graphics for this menu level
-          displayOne.setTextColor(MENUCOLOR[1]);               //  Set OLED color to white to print text
+          fireButton.tick();                                //  Check state of the Fire Button
+          menuPos = doEncoder(firstTime, 0, 35, 0, 4, -1);  //  Find new value for the menu position   
+          encoderButton();                                  //  Check value of the encoder button and change state
+          displayOne.clearDisplay();                        //  Clear the display before going further
+          baseText(menuLevel, menuPos);                     //  Print the background text and graphics for this menu level
+          displayOne.setTextColor(MENUCOLOR[1]);            //  Set OLED color to white to print text
           displayOne.setCursor(80,MENUPOSITIONS[1]);        //  Move to the position to print the display string below
-          displayOne.printf("%i",smartLightAddD);
+          displayOne.printf("%i",smartLightAddD);           //  Print the current address
           displayOne.setCursor(80,MENUPOSITIONS[3]);        //  Move to the position to print the display string below
-          displayOne.printf("%i",deltaDelay);
-          displayOne.display(); // Force display 
-          if (menuPos == 0) {                              //  Let cursor move freely
+          displayOne.printf("%i",deltaDelay);               //  Print the current address
+          displayOne.display();                             //  Force display 
+          if (menuPos == 0) {                               //  Let cursor move freely
             firstTime = 0;
           }
         }
@@ -610,17 +631,16 @@ void loop() {
       fireButton.tick();                                   //  Check state of the Fire Button
       buttonPress = digitalRead(BUTTONPIN);                //  Read the encoder Button but do not change state
       if (buttonPress && buttonPress != buttonPressed) {   //  Check for rising edge of encoder button to be certain finger is OFF of button
-      throwAway = doEncoder(0,0,95,1,23, smartLightAddD);            //  force initial values to the encoder   
+      throwAway = doEncoder(0,0,95,0,23, smartLightAddD);  //  force initial values to the encoder   
         while(buttonPress) {                               //  make CERTAIN encoder button is not being pressed.  Pressing button SELECTS
-          fireButton.tick();                                   //  Check state of the Fire Button
-          smartLightAddD = doEncoder(0,0,95,1,23,-1);    //  Get address value from the encoder, -1 indicates do not preset the value  
-          displayOne.clearDisplay();//  Clear the display before going further
-          baseText(menuLevel, 1);                    //  Print the background text and graphics for this menu level
-          displayOne.setCursor(80,MENUPOSITIONS[1]);        //  Move to the position to print the display string below
-          displayOne.printf("%i",smartLightAddD);
-          displayOne.display(); // Force display 
-          buttonPress = digitalRead(BUTTONPIN);           //  Check if the button has been pressed to select the address
-          Serial.printf("(61)Case Index = %i \n",caseIndex);
+          fireButton.tick();                               //  Check state of the Fire Button
+          smartLightAddD = doEncoder(0,0,95,1,23,-1);      //  Get address value from the encoder, -1 indicates do not preset the value  
+          displayOne.clearDisplay();                       //  Clear the display before going further
+          baseText(menuLevel, 1);                          //  Print the background text and graphics for this menu level
+          displayOne.setCursor(80,MENUPOSITIONS[1]);       //  Move to the position to print the display string below
+          displayOne.printf("%i",smartLightAddD);          //  Print the current address
+          displayOne.display();                            // Force display 
+          buttonPress = digitalRead(BUTTONPIN);            //  Check if the button has been pressed to select the address
           caseIndex = 12;
         }
       }
@@ -638,23 +658,23 @@ void loop() {
 //**********************************************************//
 //  SMART LIGHT DELAY - RUN (turn on, measure delay, turn offf, measure delay)
 //**********************************************************//
-    case 63:  // Turn ON Smart light at individual address
-      setHue(smartLightAddD,true,0x0000,255,255);  // turn on light with white color
-      delayStop = millis();  // Set up delay counter
+    case 63:                                                     // Turn ON Smart light at individual address
+      setHue(smartLightAddD,true,0x0000,255,255);                // turn on light with white color
+      delayStop = millis();                                      // Set up delay counter
       delayStart = millis();
-      lightIn = 0;           // Initialize light sensor
+      lightIn = 0;                                               // Initialize light sensor
       while(lightIn < 100 && delayStart - delayStop <= 10000) {  // Loop while not seeing light and 10 sec timer
-        fireButton.tick();                                   //  Check state of the Fire Button
-        lightIn = analogRead(SENSORPIN);
-        delayStart = millis();
+        fireButton.tick();                                       //  Check state of the Fire Button
+        lightIn = analogRead(SENSORPIN);                         // Read the light sensor
+        delayStart = millis();                                   // Increment the delay timer
       }
-      deltaDelay = delayStart - delayStop;
-//    Serial.println("case 53");
+      deltaDelay = delayStart - delayStop;                       // Calculate the delay
       caseIndex = 12;
       break;
 
     
 //**********************************************************//
+//       EMPTY CASE
 //**********************************************************//
     case 64:  // empty menu index, redirect
       caseIndex = 12;
@@ -682,22 +702,22 @@ void loop() {
 //  SMART OUTLET MANUAL CONTROL
 //**********************************************************//
     case 2:
-      fireButton.tick();                                   //  Check state of the Fire Button
-      buttonPress = digitalRead(BUTTONPIN);                //  Read the encoder Button but do not change state
-      menuLevel = 7;                                       //  Set menu level 7 for the screen text
-      if (buttonPress && buttonPress != buttonPressed) {   //  Check for rising edge of encoder button to be certain finger is OFF of button
-      throwAway = doEncoder(0, 0, 35 ,0, 4, 0);            //  force initial values to the encoder  
-        while(buttonPress) {                                //  make CERTAIN encoder button is not being pressed.  Pressing button SELECTS
-          fireButton.tick();                                   //  Check state of the Fire Button
-          menuPos = doEncoder(firstTime,0,35,0,4,-1);      //  Find new value for the menu position   
-          encoderButton();                                     //  Check value of the encoder button and change state
-          displayOne.clearDisplay();//  Clear the display before going further
-          baseText(menuLevel, menuPos);                    //  Print the background text and graphics for this menu level
-          displayOne.setTextColor(MENUCOLOR[1]);               //  Set OLED color to white to print text
-          displayOne.setCursor(70,MENUPOSITIONS[1]);        //  Move to the position to print the display string below
-          displayOne.printf("%i",smartOutletAdd);
-          displayOne.display(); // Force display 
-          if (menuPos == 0) {                              //  Let cursor move freely
+      fireButton.tick();                                  //  Check state of the Fire Button
+      buttonPress = digitalRead(BUTTONPIN);               //  Read the encoder Button but do not change state
+      menuLevel = 7;                                      //  Set menu level 7 for the screen text
+      if (buttonPress && buttonPress != buttonPressed) {  //  Check for rising edge of encoder button to be certain finger is OFF of button
+      throwAway = doEncoder(0, 0, 35 ,0, 4, 0);           //  force initial values to the encoder  
+        while(buttonPress) {                              //  make CERTAIN encoder button is not being pressed.  Pressing button SELECTS
+          fireButton.tick();                              //  Check state of the Fire Button
+          menuPos = doEncoder(firstTime,0,35,0,4,-1);     //  Find new value for the menu position   
+          encoderButton();                                //  Check value of the encoder button and change state
+          displayOne.clearDisplay();                      //  Clear the display before going further
+          baseText(menuLevel, menuPos);                   //  Print the background text and graphics for this menu level
+          displayOne.setTextColor(MENUCOLOR[1]);          //  Set OLED color to white to print text
+          displayOne.setCursor(70,MENUPOSITIONS[1]);      //  Move to the position to print the display string below
+          displayOne.printf("%i",smartOutletAdd);         //  Print the current address
+          displayOne.display();                           // Force display 
+          if (menuPos == 0) {                             //  Let cursor move freely
             firstTime = 0;
           }
         }
@@ -708,21 +728,20 @@ void loop() {
 //**********************************************************//
 //  SMART OUTLET MANUAL CONTROL - ADDRESS
 //**********************************************************//
-    case 71:  // Input indiviual Smart outlet address
+    case 71:                                               // Input indiviual Smart outlet address
       fireButton.tick();                                   //  Check state of the Fire Button
       buttonPress = digitalRead(BUTTONPIN);                //  Read the encoder Button but do not change state
       if (buttonPress && buttonPress != buttonPressed) {   //  Check for rising edge of encoder button to be certain finger is OFF of button
-      throwAway = doEncoder(0,0,95,0,23, smartOutletAdd);           //  force initial values to the encoder 
-        while(buttonPress) {                                //  make CERTAIN encoder button is not being pressed.  Pressing button SELECTS)
-          fireButton.tick();                                   //  Check state of the Fire Button
-          smartOutletAdd = doEncoder(0,0,95,0,23,-1);    //  Get address value from the encoder, -1 indicates do not preset the value  
-          displayOne.clearDisplay();                           //  Clear the display before going further
-          baseText(menuLevel, 1);                    //  Print the background text and graphics for this menu level
-          displayOne.setCursor(70,MENUPOSITIONS[1]);        //  Move to the position to print the display string below
-          displayOne.printf("%i",smartOutletAdd);
-          displayOne.display(); // Force display 
-          buttonPress = digitalRead(BUTTONPIN);           //  Check if the button has been pressed to select the address
-          Serial.printf("(71)Case Index = %i \n",caseIndex);
+      throwAway = doEncoder(0,0,95,0,23, smartOutletAdd);  //  force initial values to the encoder 
+        while(buttonPress) {                               //  make CERTAIN encoder button is not being pressed.  Pressing button SELECTS)
+          fireButton.tick();                               //  Check state of the Fire Button
+          smartOutletAdd = doEncoder(0,0,95,0,23,-1);      //  Get address value from the encoder, -1 indicates do not preset the value  
+          displayOne.clearDisplay();                       //  Clear the display before going further
+          baseText(menuLevel, 1);                          //  Print the background text and graphics for this menu level
+          displayOne.setCursor(70,MENUPOSITIONS[1]);       //  Move to the position to print the display string below
+          displayOne.printf("%i",smartOutletAdd);          //  Print the current address
+          displayOne.display();                            // Force display 
+          buttonPress = digitalRead(BUTTONPIN);            //  Check if the button has been pressed to select the address
           caseIndex = 2;
         }
       }
@@ -731,7 +750,7 @@ void loop() {
 //**********************************************************//
 //  SMART OUTLET MANUAL CONTROL - TURN ON
 //**********************************************************//
-    case 72:  // Turn ON Smart outlet at individual address
+    case 72:                                          // Turn ON Smart outlet at individual address
       switchON(smartOutletAdd);
     Serial.println("case 72");
       caseIndex = 2;
@@ -741,7 +760,7 @@ void loop() {
 //**********************************************************//
 //  SMART OUTLET MANUAL CONTROL - TURN OFF
 //**********************************************************//
-    case 73:  // Turn OFF Smart outlet at individual address
+    case 73:                                         // Turn OFF Smart outlet at individual address
       switchOFF(smartOutletAdd);
     Serial.println("case 73");
       caseIndex = 2;
@@ -751,7 +770,7 @@ void loop() {
 //**********************************************************//
 //  SMART OUTLET MANUAL CONTROL - TURN ALL OFF
 //**********************************************************//
-    case 74:  // Turn OFF ALL Smart outlets
+    case 74:                                          // Turn OFF ALL Smart outlets
       for (i=0; i<=maxOutlets; i++) {
       switchOFF(i);
       }
@@ -919,15 +938,27 @@ void printIP() {
 //**********************************************************//
 //**********************************************************//
 void  fireFireFire() {                                 //  make fire lights run!
-        for (j=0; j<=2; j++) {                         // Index through the current string
-          setHue(fireBatch[j],true,HueRed,255,255);    // Set current light RED
-          delay(500);                                  // Delay until next light
-          fireButton.tick();                           // Check for FIREBUTTON
+  displayOne.drawRect(2,2,SCREENWIDTH-2,SCREENHEIGHT-2,MENUCOLOR[1]);   //  Draw the screen border
+
+    if (fireFlash) {                                                    //  Check if current menu option is where the cursor is
+      displayOne.setTextColor(MENUCOLOR[0],MENUCOLOR[1]);               //  Set color to inverse for cursor
+    } else {
+      displayOne.setTextColor(MENUCOLOR[1]);                            //  Set color to white for all else
+    }
+    displayOne.setCursor(25,25);                                        //  Move cursor to location to print text
+    displayOne.setTextSize(2);                                          // Draw 2X-scale text
+    displayOne.println("FIRE");                                         //  print text for this line
+    displayOne.display();                                               // Force display 
+
+        for (j=0; j<=2; j++) {                                          // Index through the current string
+          setHue(fireBatch[j],true,HueRed,255,255);                     // Set current light RED
+          delay(500);                                                   // Delay until next light
+          fireButton.tick();                                            // Check for FIREBUTTON
         }
-        for (j=0; j<=2; j++) {                         // Index through the current string
-          setHue(fireBatch[j],false,HueRed,255,255);   // Set current light OFF
-          delay(500);                                  // Delay until next light
-          fireButton.tick();                           // Check for FIREBUTTON
+        for (j=0; j<=2; j++) {                                          // Index through the current string
+          setHue(fireBatch[j],false,HueRed,255,255);                    // Set current light OFF
+          delay(500);                                                   // Delay until next light
+          fireButton.tick();                                            // Check for FIREBUTTON
         }
 }
 
@@ -944,6 +975,11 @@ void  fireFireFire() {                                 //  make fire lights run!
 //**********************************************************//
 void click1() {                                        // set fire lights
   fireButtonState = 1;                                 // Set indicator for FIRE
+  displayOne.setTextSize(1);                           // Return Display to smaller text size
+  for (j=0; j<=2; j++) {                               // Capture Hue and brightness for lights in fire string
+    holdHue[j] = getColor(fireBatch[j]);               // Read the color from the designated light in Fire string
+    holdBri[j] = getBrightness(fireBatch[j]);          // Read the brightness from the designated light in Fire string
+  }
 }
 
 
@@ -961,6 +997,6 @@ void LPstart() {                                       // clear fire lights
   fireButtonState = 0;                                 // Set indicator for FIRE
   caseIndex = 0;                                       // Go to TOP MENU
   for (j=0; j<=2; j++) {                               // Index through the current string
-    setHue(fireBatch[j],true,HueRed,255,0);            // Set lights in fire string to white
+    setHue(fireBatch[j],true,holdHue[j],holdBri[j],255);            // Set lights in fire string to white
   }
 }
